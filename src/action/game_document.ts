@@ -1,4 +1,4 @@
-import type { DocumentStatus, Role } from "@/generated/prisma";
+import type { DocumentStatus, Role } from "@/generated/prisma/enums";
 
 export const canUserEditDocument = (
   user: { id: string; role: Role; designationId?: string | null } | null,
@@ -20,4 +20,3 @@ export const canUserEditDocument = (
 
   return false;
 };
-
