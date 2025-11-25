@@ -11,8 +11,8 @@ import {
   DocumentWorkflowStage,
   Role,
   DocumentRejectionReason,
-  Prisma,
-} from "@/generated/prisma";
+} from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   DOCUMENT_HISTORY_ACTION_LABELS,
   DOCUMENT_REJECTION_REASON_LABELS,
