@@ -16,7 +16,7 @@ export type FormState = {
   success?: boolean;
   redirect?: string;
   user?: {
-    designation: string;
+    role: string;
     id: string;
   };
   twoFactorRequired?: boolean;

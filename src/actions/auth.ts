@@ -112,7 +112,8 @@ export async function loginAction(
     if (user.twoFactorEnabled) {
       return {
         success: false,
-        message: "Two-factor authentication required. Enter the code from your authenticator app.",
+        message:
+          "Two-factor authentication required. Enter the code from your authenticator app.",
         twoFactorRequired: true,
         twoFactorUserId: user.id,
         twoFactorRemember: remember ?? false,
@@ -145,7 +146,7 @@ export async function loginAction(
     return {
       success: true,
       message: "Login successful",
-      user: { role: user.role.name, id: user.id },
+      user: { role: user.role, id: user.id },
       redirect: finalRedirect,
     };
   } catch (error) {
@@ -176,11 +177,7 @@ export async function verifyTwoFactorAction(
 
     if (!validated.success) {
       return {
-        errors: {
-          token: validated.error.errors
-            .filter((err) => err.path?.[0] === "token")
-            .map((err) => err.message),
-        },
+        errors: validated.error.flatten().fieldErrors,
         message: "Invalid authentication code",
       };
     }
@@ -225,7 +222,8 @@ export async function verifyTwoFactorAction(
 
     if (!roleConfig) {
       return {
-        message: "Your account role is not properly configured. Please contact the administrator.",
+        message:
+          "Your account role is not properly configured. Please contact the administrator.",
       };
     }
 
