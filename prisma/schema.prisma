@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SYSTEM_ADMIN
+  PRESIDENT
+  VPAA
+  VPADA
+  DEAN
+  HR
+  INSTRUCTOR
+}
+
+model Designation {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentCategories DocumentCategory[] @relation("DesignationDocumentCategories")
+  users              User[]
+}
+
+model DocumentCategory {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+  attachment  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  designations Designation[] @relation("DesignationDocumentCategories")
+  documents    Document[]
+}
+
+model User {
+  id            String  @id @default(uuid())
+  firstName     String
+  lastName      String
+  email         String  @unique
+  password      String
+  contactNumber String
+  image         String?
+  isActive      Boolean @default(true)
+
+  // 2FA fields
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // Encrypted TOTP secret
+  backupCodes      String? // JSON array of backup codes (encrypted)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role Role @default(INSTRUCTOR)
+
+  designationId String
+  designation   Designation @relation(fields: [designationId], references: [id], onDelete: Cascade)
+
+  logs                SystemLog[]
+  backups             Backup[]
+  signature           Signature?
+  notifications       Notification[]
+  documentsSubmitted  Document[]            @relation("DocumentSubmitted")
+  documentAssignments DocumentAssignatory[]
+  documentHistory     DocumentHistory[]
+  documentComments    DocumentComment[]
+  archivedDocuments   Document[]            @relation("DocumentArchivedBy")
+}
+
+model Signature {
+  id        String @id @default(uuid())
+  imageData String // Base64 encoded signature image
+  passcode  String // 6-digit encrypted passcode
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  action    String
+  ipAddress String
+  details   String
+  status    String // Success, Failed, Warning
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Backup {
+  id          String   @id @default(uuid())
+  backupId    String   @unique
+  type        String
+  status      String
+  size        Float?
+  fileUrl     String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+}
+
+enum DocumentPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentWorkflowStage {
+  INSTRUCTOR
+  DEAN
+  VPAA
+  VPADA
+  PRESIDENT
+  REGISTRAR
+  ARCHIVES
+}
+
+enum DocumentHistoryAction {
+  SUBMITTED
+  FORWARDED
+  APPROVED
+  REJECTED
+  RETURNED
+  SIGNATURE_ATTACHED
+  COMMENTED
+}
+
+enum DocumentRejectionReason {
+  MISSING_INFORMATION
+  INVALID_DETAILS
+  POLICY_VIOLATION
+  NEEDS_REVISION
+  OTHER
+}
+
+model Document {
+  id             String           @id @default(uuid())
+  referenceId    String           @unique
+  attachment     String
+  remarks        String?
+  fileDate       DateTime
+  priority       DocumentPriority
+  status         DocumentStatus   @default(PENDING)
+  fileCategoryId String
+  fileCategory   DocumentCategory @relation(fields: [fileCategoryId], references: [id])
+
+  submittedById String
+  submittedBy   User   @relation("DocumentSubmitted", fields: [submittedById], references: [id])
+
+  assignatories DocumentAssignatory[]
+  history       DocumentHistory[]
+  comments      DocumentComment[]
+  archivedAt    DateTime?
+  archivedReason String?
+  archivedById  String?
+  archivedBy    User?   @relation("DocumentArchivedBy", fields: [archivedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DocumentAssignatory {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@unique([documentId, userId])
+}
+
+model DocumentHistory {
+  id               String                 @id @default(uuid())
+  documentId       String
+  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  action           DocumentHistoryAction
+  stage            DocumentWorkflowStage
+  status           DocumentStatus
+  summary          String
+  details          String?
+  rejectionReason  DocumentRejectionReason?
+  rejectionDetails String?
+  performedById    String?
+  performedBy      User?                  @relation(fields: [performedById], references: [id])
+  metadata         Json?
+  createdAt        DateTime               @default(now())
+}
+
+model DocumentComment {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationType {
+  DOCUMENT_SUBMITTED
+  DOCUMENT_ASSIGNED
+  DOCUMENT_APPROVED
+  DOCUMENT_REJECTED
+  DOCUMENT_REQUIRES_ACTION
+  DOCUMENT_UPDATED
+  DOCUMENT_ARCHIVED
+  SYSTEM_ANNOUNCEMENT
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  title       String
+  description String
+  type        NotificationType
+  isRead      Boolean          @default(false)
+  link        String? // Optional link to related resource
+  metadata    String? // JSON string for additional data
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+}
