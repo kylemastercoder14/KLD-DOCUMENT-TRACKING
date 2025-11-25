@@ -6,7 +6,7 @@ import { logSystemAction } from "@/lib/system-log";
 import {
   DocumentHistoryAction,
   DocumentWorkflowStage,
-} from "../generated/prisma";
+} from "@/generated/prisma";
 
 export const getDocumentComments = async (documentId: string) => {
   const session = await getServerSession();

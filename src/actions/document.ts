@@ -12,7 +12,7 @@ import {
   Role,
   DocumentRejectionReason,
   Prisma,
-} from "../generated/prisma";
+} from "@/generated/prisma";
 import {
   DOCUMENT_HISTORY_ACTION_LABELS,
   DOCUMENT_REJECTION_REASON_LABELS,
