@@ -16,7 +16,10 @@ const signatureSchema = z.object({
 
 // Get encryption key - use JWT_SECRET as fallback if ENCRYPTION_KEY is not set
 function getEncryptionKey(): Buffer {
-  const keyString = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || "default-key-change-in-production";
+  const keyString =
+    process.env.ENCRYPTION_KEY ||
+    process.env.JWT_SECRET ||
+    "default-key-change-in-production";
   // Ensure key is exactly 32 bytes for AES-256
   const keyHash = crypto.createHash("sha256").update(keyString).digest();
   return keyHash;
@@ -93,9 +96,7 @@ export async function saveSignature(data: {
   // Validate input
   const validated = signatureSchema.safeParse(data);
   if (!validated.success) {
-    throw new Error(
-      validated.error.errors.map((e) => e.message).join(", ")
-    );
+    throw new Error(validated.error.issues.map((e) => e.message).join(", "));
   }
 
   const { imageData, passcode } = validated.data;
@@ -133,7 +134,9 @@ export async function saveSignature(data: {
   };
 }
 
-export async function verifySignaturePasscode(passcode: string): Promise<boolean> {
+export async function verifySignaturePasscode(
+  passcode: string
+): Promise<boolean> {
   const session = await getServerSession();
   if (!session) {
     throw new Error("Unauthorized");
@@ -176,4 +179,3 @@ export async function deleteSignature() {
 
   return { success: true };
 }
-
