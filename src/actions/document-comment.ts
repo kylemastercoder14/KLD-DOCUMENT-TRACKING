@@ -5,9 +5,8 @@ import { getServerSession } from "@/lib/session";
 import { logSystemAction } from "@/lib/system-log";
 import {
   DocumentHistoryAction,
-  DocumentStatus,
   DocumentWorkflowStage,
-} from "@/generated/prisma";
+} from "../generated/prisma";
 
 export const getDocumentComments = async (documentId: string) => {
   const session = await getServerSession();
@@ -165,4 +164,3 @@ export const createDocumentComment = async (
     },
   };
 };
-

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
 import prisma from "@/lib/prisma";
@@ -11,7 +12,7 @@ import {
   Role,
   DocumentRejectionReason,
   Prisma,
-} from "@/generated/prisma";
+} from "../generated/prisma";
 import {
   DOCUMENT_HISTORY_ACTION_LABELS,
   DOCUMENT_REJECTION_REASON_LABELS,
@@ -319,7 +320,9 @@ export const createDocument = async (payload: DocumentPayload) => {
   if (notificationUserIds.length > 0) {
     await createNotificationsForUsers(notificationUserIds, {
       title: "New Document Submitted",
-      description: `Document ${referenceId} has been submitted${submitter ? ` by ${submitter.firstName} ${submitter.lastName}` : ""} and requires your review.`,
+      description: `Document ${referenceId} has been submitted${
+        submitter ? ` by ${submitter.firstName} ${submitter.lastName}` : ""
+      } and requires your review.`,
       type: "DOCUMENT_SUBMITTED",
       link: `/dean/designate-document/view/${document.id}`,
       metadata: {
@@ -520,7 +523,9 @@ export const approveDocumentById = async (
   if (document.submittedById && document.submittedById !== session.id) {
     await createNotification({
       title: "Document Approved",
-      description: `Your document ${document.referenceId} has been approved${remarks ? `. Remarks: ${remarks}` : "."}`,
+      description: `Your document ${document.referenceId} has been approved${
+        remarks ? `. Remarks: ${remarks}` : "."
+      }`,
       type: "DOCUMENT_APPROVED",
       userId: document.submittedById,
       link: `/instructor/designate-document/view/${documentId}`,
@@ -594,7 +599,11 @@ export const rejectDocumentById = async (
       DOCUMENT_REJECTION_REASON_LABELS[params.reason] ?? params.reason;
     await createNotification({
       title: "Document Rejected",
-      description: `Your document ${document.referenceId} has been rejected. Reason: ${reasonLabel}${params.details ? `. Details: ${params.details}` : "."}`,
+      description: `Your document ${
+        document.referenceId
+      } has been rejected. Reason: ${reasonLabel}${
+        params.details ? `. Details: ${params.details}` : "."
+      }`,
       type: "DOCUMENT_REJECTED",
       userId: document.submittedById,
       link: `/instructor/designate-document/view/${documentId}`,
@@ -782,7 +791,11 @@ export const forwardDocumentById = async (
 
     await createNotificationsForUsers(recipientIds, {
       title: "Document Forwarded to You",
-      description: `Document ${document.referenceId} has been forwarded to you by ${deanName}${payload.note ? `. Note: ${payload.note}` : "."}`,
+      description: `Document ${
+        document.referenceId
+      } has been forwarded to you by ${deanName}${
+        payload.note ? `. Note: ${payload.note}` : "."
+      }`,
       type: "DOCUMENT_ASSIGNED",
       link: `/dean/designate-document/view/${documentId}`,
       metadata: {
@@ -874,7 +887,9 @@ export const forwardDocumentByIdForVpaa = async (
   });
 
   if (!recipients.length) {
-    throw new Error("No valid recipients selected. Only President can be selected.");
+    throw new Error(
+      "No valid recipients selected. Only President can be selected."
+    );
   }
 
   await prisma.documentAssignatory.createMany({
@@ -919,7 +934,11 @@ export const forwardDocumentByIdForVpaa = async (
 
     await createNotificationsForUsers(recipientIds, {
       title: "Document Forwarded to You",
-      description: `Document ${document.referenceId} has been forwarded to you by ${vpaaName}${payload.note ? `. Note: ${payload.note}` : "."}`,
+      description: `Document ${
+        document.referenceId
+      } has been forwarded to you by ${vpaaName}${
+        payload.note ? `. Note: ${payload.note}` : "."
+      }`,
       type: "DOCUMENT_ASSIGNED",
       link: `/dean/designate-document/view/${documentId}`,
       metadata: {
@@ -1389,7 +1408,10 @@ export const getVpaaDashboardAnalytics = async () => {
     select: { id: true, role: true },
   });
 
-  if (!vpaa || (vpaa.role !== "VPAA" && vpaa.role !== "VPADA" && vpaa.role !== "PRESIDENT")) {
+  if (
+    !vpaa ||
+    (vpaa.role !== "VPAA" && vpaa.role !== "VPADA" && vpaa.role !== "PRESIDENT")
+  ) {
     throw new Error("Forbidden");
   }
 
