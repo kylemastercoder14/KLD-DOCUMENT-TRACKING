@@ -40,9 +40,7 @@ export async function updateProfile(data: {
 
   const validated = updateProfileSchema.safeParse(data);
   if (!validated.success) {
-    throw new Error(
-      validated.error.errors.map((e) => e.message).join(", ")
-    );
+    throw new Error(validated.error.issues.map((e) => e.message).join(", "));
   }
 
   const updated = await prisma.user.update({
@@ -76,7 +74,9 @@ export async function updateProfile(data: {
 const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Please confirm your new password"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -96,9 +96,7 @@ export async function changePassword(data: {
 
   const validated = changePasswordSchema.safeParse(data);
   if (!validated.success) {
-    throw new Error(
-      validated.error.errors.map((e) => e.message).join(", ")
-    );
+    throw new Error(validated.error.issues.map((e) => e.message).join(", "));
   }
 
   // Get current user to verify current password
@@ -161,4 +159,3 @@ export async function updateProfileImage(imageUrl: string) {
 
   return { success: true };
 }
-
