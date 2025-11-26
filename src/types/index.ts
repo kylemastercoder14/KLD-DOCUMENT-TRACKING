@@ -10,6 +10,7 @@ export interface DocumentCategoryWithDesignations extends DocumentCategory {
 
 export interface UserWithDesignation extends User {
   designation: Designation;
+  isActive: boolean;
 }
 
 export interface DocumentHistoryEntry {
