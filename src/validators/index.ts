@@ -16,20 +16,27 @@ export const documentCategorySchema = z.object({
   designationIds: z.array(z.string().min(1)).catch([]),
 });
 
-export const accountSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Valid email is required"),
-  password: z.preprocess((value) => {
-    if (typeof value === "string" && value.trim() === "") {
-      return undefined;
+export const accountSchema = z
+  .object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Valid email is required"),
+    password: z.string().optional(),
+    contactNumber: z.string().min(1, "Contact number is required"),
+    image: z.string().optional(),
+    designationId: z.string().min(1, "Designation is required"),
+  })
+  .refine(
+    (data) => !data.password || data.password.trim() === "" || data.password.length >= 6,
+    {
+      message: "Password must be at least 6 characters",
+      path: ["password"],
     }
-    return value;
-  }, z.string().min(6, "Password must be at least 6 characters").optional()),
-  contactNumber: z.string().min(1, "Contact number is required"),
-  image: z.string().optional(),
-  designationId: z.string().min(1, "Designation is required"),
-});
+  )
+  .transform((data) => ({
+    ...data,
+    password: data.password && data.password.trim() !== "" ? data.password : undefined,
+  }));
 
 export const documentSchema = z.object({
   fileCategoryId: z.string().min(1, "File category is required"),
