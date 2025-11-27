@@ -46,9 +46,7 @@ export const documentSchema = z.object({
     .max(1, "Only one attachment is allowed"),
   remarks: z.string().optional(),
   fileDate: z.string().min(1, "File date is required"),
-  priority: z.enum(["Low", "Medium", "High"], {
-    required_error: "Priority is required",
-  }),
+  priority: z.enum(["Low", "Medium", "High"]),
   assignatories: z
     .union([z.array(z.string().min(1)), z.tuple([] as const)])
     .transform((val) => (Array.isArray(val) ? [...val] : [])),
