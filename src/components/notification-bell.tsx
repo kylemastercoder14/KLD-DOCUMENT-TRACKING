@@ -46,9 +46,7 @@ export function NotificationBell() {
     },
   });
 
-  const unreadNotifications = notifications
-    .filter((n) => !n.isRead)
-    .slice(0, 5); // Show only latest 5
+  const recentNotifications = notifications.slice(0, 5); // Show latest 5, read or unread
 
   const handleNotificationClick = (notification: {
     id: string;
@@ -92,13 +90,13 @@ export function NotificationBell() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : unreadNotifications.length === 0 ? (
+          ) : recentNotifications.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No new notifications
+              No notifications yet
             </div>
           ) : (
             <div className="p-2">
-              {unreadNotifications.map((notification) => {
+              {recentNotifications.map((notification) => {
                 const content = (
                   <div
                     className={cn(
@@ -145,7 +143,7 @@ export function NotificationBell() {
           <Button
             variant="ghost"
             className="w-full"
-            onClick={() => router.push("/instructor/settings?tab=notifications")}
+            onClick={() => router.push("/instructor/notifications")}
           >
             View all notifications
           </Button>

@@ -146,7 +146,7 @@ export function NavUser({
 
           <DropdownMenuGroup>
             <DropdownMenuItem
-              onClick={() => router.push(`${adminPath}/profile`)}
+              onClick={() => router.push(`${adminPath}/settings`)}
             >
               <IconUserCircle />
               Account

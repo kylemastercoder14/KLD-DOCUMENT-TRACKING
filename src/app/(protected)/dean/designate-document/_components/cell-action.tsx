@@ -244,11 +244,13 @@ export const CellAction = ({
   const toggleForwardRecipient = (userId: string, checked: boolean | string) => {
     setSelectedForwardRecipients((prev) => {
       if (checked) {
+        // Only one recipient can be selected at a time
         if (prev.includes(userId)) {
           return prev;
         }
-        return [...prev, userId];
+        return [userId];
       }
+      // Unselecting clears the selection
       return prev.filter((id) => id !== userId);
     });
   };
@@ -262,7 +264,7 @@ export const CellAction = ({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className='w-44'>
+        <DropdownMenuContent align="end" className='w-48'>
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
           <DropdownMenuItem onClick={handleViewFile}>
@@ -422,7 +424,7 @@ export const CellAction = ({
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
-                Forward to (select at least one)
+                Forward to (select one recipient)
               </p>
               {forwardOptionsLoading ? (
                 <div className="text-sm text-muted-foreground">Loading recipients…</div>

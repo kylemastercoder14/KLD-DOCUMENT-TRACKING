@@ -1,4 +1,5 @@
-import { Designation, DocumentCategory, User } from "@/generated/prisma/client";
+import { Designation, DocumentCategory } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 export interface DesignationWithDocuments extends Designation {
   documentCategories: DocumentCategory[];
@@ -8,9 +9,9 @@ export interface DocumentCategoryWithDesignations extends DocumentCategory {
   designations: Designation[];
 }
 
-export interface UserWithDesignation extends User {
-  include: { designation: Designation };
-}
+export type UserWithDesignation = Prisma.UserGetPayload<{
+  include: { designation: true };
+}>;
 
 export interface DocumentHistoryEntry {
   id: string;

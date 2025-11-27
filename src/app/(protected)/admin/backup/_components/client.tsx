@@ -107,7 +107,7 @@ export const Client = () => {
                   {format(new Date(backup.createdAt), "PPpp")}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {backup.size ? `${backup.size.toFixed(2)} GB` : "—"}
+                  {backup.size ? `${backup.size.toFixed(2)} MB` : "—"}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{backup.type}</td>
                 <td className="px-4 py-3">
@@ -192,7 +192,7 @@ export const Client = () => {
                   })}
                   .
                 </p>
-                <p>Total size: {lastSuccessfulBackup.size?.toFixed(2) ?? "1.0"} GB</p>
+                <p>Total size: {lastSuccessfulBackup.size?.toFixed(2) ?? "0.0"} MB</p>
               </>
             ) : (
               <p>No backup has been created yet.</p>

@@ -100,7 +100,9 @@ export const documentCategoryColumns = ({
   {
     id: "designations",
     accessorFn: (row) =>
-      row.designations.map((designation) => designation.name).join(", "),
+      (row.designations ?? [])
+        .map((designation) => designation.name)
+        .join(", "),
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -111,10 +113,11 @@ export const documentCategoryColumns = ({
       </Button>
     ),
     enableSorting: true,
-    cell: ({ row }) =>
-      row.original.designations.length ? (
+    cell: ({ row }) => {
+      const designations = row.original.designations ?? [];
+      return designations.length ? (
         <div className="flex flex-wrap gap-2 ml-3">
-          {row.original.designations.map((designation) => (
+          {designations.map((designation) => (
             <Badge key={designation.id} variant="outline">
               {designation.name}
             </Badge>
@@ -124,7 +127,8 @@ export const documentCategoryColumns = ({
         <p className="text-sm text-muted-foreground ml-3">
           No designations assigned
         </p>
-      ),
+      );
+    },
   },
   {
     accessorKey: "isActive",
