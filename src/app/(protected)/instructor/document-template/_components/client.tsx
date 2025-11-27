@@ -10,6 +10,7 @@ import { getDesignations } from "@/actions/designation";
 import { getDocumentCategories } from "@/actions/document-category";
 import { DesignationWithDocuments } from "@/types";
 import { DocumentCategoryWithDesignations } from "@/types";
+import { DocumentCategory } from "@/generated/prisma/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
@@ -106,7 +107,7 @@ export const Client = () => {
     setSearchQuery("");
   };
 
-  const handleCategoryClick = (category: DocumentCategoryWithDesignations) => {
+  const handleCategoryClick = (category: DocumentCategory) => {
     if (!category.attachment) {
       return;
     }
