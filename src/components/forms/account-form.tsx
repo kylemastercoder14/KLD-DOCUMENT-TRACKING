@@ -48,7 +48,7 @@ import { ArrowLeft, IdCard, SaveIcon, Users } from "lucide-react";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import ImageUpload from "@/components/image-upload";
 
-type AccountFormValues = z.output<typeof accountSchema>;
+type AccountFormValues = z.input<typeof accountSchema>;
 
 export const AccountForm = ({
   initialData,
