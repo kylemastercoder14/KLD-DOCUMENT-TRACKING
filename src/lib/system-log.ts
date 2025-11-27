@@ -24,11 +24,12 @@ export async function logSystemAction({
     const sessionUser = userId ? { id: userId } : await getServerSession();
     if (!sessionUser?.id) return;
 
-    const forwardedFor = headers().get("x-forwarded-for");
+    const headersList = await headers();
+    const forwardedFor = headersList.get("x-forwarded-for");
     const resolvedIp =
       ipAddress ??
       forwardedFor?.split(",")[0]?.trim() ??
-      headers().get("x-real-ip") ??
+      headersList.get("x-real-ip") ??
       "Unknown";
 
     await prisma.systemLog.create({
