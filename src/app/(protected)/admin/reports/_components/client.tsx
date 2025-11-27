@@ -106,9 +106,9 @@ export const Client = () => {
   const summaryCards = useMemo(() => {
     if (!data) {
       return [
-        { label: "Total Documents Processed", value: "—", subtext: "" },
-        { label: "Average Turnaround Time", value: "—", subtext: "" },
-        { label: "Pending Approval", value: "—", subtext: "" },
+        { label: "Total Documents Processed", value: "—", subtext: "", subtextClass: undefined },
+        { label: "Average Turnaround Time", value: "—", subtext: "", subtextClass: undefined },
+        { label: "Pending Approval", value: "—", subtext: "", subtextClass: undefined },
       ];
     }
 
@@ -322,8 +322,8 @@ export const Client = () => {
           description="System-wide insights, throughput analysis, and bottlenecks."
         />
         <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-[320px] w-full" />
-        <Skeleton className="h-[320px] w-full" />
+        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-80 w-full" />
       </div>
     );
   }
