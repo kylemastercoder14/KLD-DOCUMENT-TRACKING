@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NavUser } from "./nav-user";
 import { NotificationBell } from "./notification-bell";
-import { User } from "@/generated/prisma";
+import { User } from "@/generated/prisma/client";
 
 export function SiteHeader({
   user,

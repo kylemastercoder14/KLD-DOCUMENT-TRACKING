@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { logoutAction } from "@/actions/auth";
 import { Loader2 } from "lucide-react";
-import { User } from "@/generated/prisma";
+import { User } from "@/generated/prisma/client";
 import { ROLE_CONFIG, UserRole } from "@/lib/config";
 
 /**

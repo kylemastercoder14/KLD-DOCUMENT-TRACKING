@@ -48,7 +48,7 @@ import {
   forwardDocumentById,
 } from "@/actions/document";
 import { Textarea } from "@/components/ui/textarea";
-import { DocumentRejectionReason } from "@/generated/prisma";
+import { DocumentRejectionReason } from "@/generated/prisma/enums";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type CellActionProps = {

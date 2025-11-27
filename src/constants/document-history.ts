@@ -2,7 +2,7 @@ import {
   DocumentHistoryAction,
   DocumentWorkflowStage,
   DocumentRejectionReason,
-} from "@/generated/prisma";
+} from "@/generated/prisma/enums";
 
 export const WORKFLOW_STAGE_LABELS: Record<DocumentWorkflowStage, string> = {
   INSTRUCTOR: "Instructor",

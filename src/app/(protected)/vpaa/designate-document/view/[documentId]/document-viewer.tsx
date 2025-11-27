@@ -29,7 +29,7 @@ import { replaceDocumentAttachment, type getDocumentById } from "@/actions/docum
 import type { getCurrentUser } from "@/actions/user";
 import { upload } from "@/lib/upload";
 import { canUserEditDocument } from "@/action/game_document";
-import type { DocumentStatus } from "@/generated/prisma";
+import type { DocumentStatus } from "@/generated/prisma/enums";
 
 const docxStyles = `
 .docx-wrapper {
