@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Role } from "@/generated/prisma/enums";
 
 export const designationSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -22,6 +23,7 @@ export const accountSchema = z
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Valid email is required"),
     password: z.string().optional(),
+    role: z.nativeEnum(Role),
     contactNumber: z.string().min(1, "Contact number is required"),
     image: z.string().optional(),
     designationId: z.string().min(1, "Designation is required"),

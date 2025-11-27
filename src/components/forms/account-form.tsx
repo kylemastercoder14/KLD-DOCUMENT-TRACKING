@@ -47,8 +47,51 @@ import { DesignationWithDocuments, UserWithDesignation } from "@/types";
 import { ArrowLeft, IdCard, SaveIcon, Users } from "lucide-react";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import ImageUpload from "@/components/image-upload";
+import { Role } from "@/generated/prisma/enums";
 
 type AccountFormValues = z.input<typeof accountSchema>;
+
+const roleOptions: Array<{
+  value: Role;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: Role.SYSTEM_ADMIN,
+    label: "System Admin",
+    description: "Full access to all administration features.",
+  },
+  {
+    value: Role.PRESIDENT,
+    label: "President",
+    description: "Executive overview with final approval controls.",
+  },
+  {
+    value: Role.VPAA,
+    label: "VPAA",
+    description: "Academic affairs oversight and approvals.",
+  },
+  {
+    value: Role.VPADA,
+    label: "VPADA",
+    description: "Administrative affairs oversight and approvals.",
+  },
+  {
+    value: Role.DEAN,
+    label: "Dean",
+    description: "College-level document routing and approvals.",
+  },
+  {
+    value: Role.HR,
+    label: "HR",
+    description: "HR-focused workflows and analytics.",
+  },
+  {
+    value: Role.INSTRUCTOR,
+    label: "Instructor",
+    description: "Document submission and tracking access.",
+  },
+];
 
 export const AccountForm = ({
   initialData,
@@ -77,6 +120,7 @@ export const AccountForm = ({
       lastName: initialData?.lastName || "",
       email: initialData?.email || "",
       password: "",
+      role: initialData?.role || Role.INSTRUCTOR,
       contactNumber: initialData?.contactNumber || "",
       image: initialData?.image ?? undefined,
       designationId: initialData?.designationId || "",
@@ -95,6 +139,7 @@ export const AccountForm = ({
       lastName: initialData?.lastName || "",
       email: initialData?.email || "",
       password: "",
+      role: initialData?.role || Role.INSTRUCTOR,
       contactNumber: initialData?.contactNumber || "",
       image: initialData?.image ?? undefined,
       designationId: initialData?.designationId || "",
@@ -140,6 +185,7 @@ export const AccountForm = ({
         lastName: "",
         email: "",
         password: "",
+        role: Role.INSTRUCTOR,
         contactNumber: "",
         image: undefined,
         designationId: "",
@@ -280,6 +326,46 @@ export const AccountForm = ({
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>
+                          Role <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Grant the appropriate access level for this account.
+                        </p>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={(value) => field.onChange(value as Role)}
+                          className="grid gap-3 md:grid-cols-2"
+                        >
+                          {roleOptions.map((role) => (
+                            <label
+                              key={role.value}
+                              className="flex items-start gap-3 rounded-md border p-3 hover:bg-muted transition"
+                            >
+                              <RadioGroupItem
+                                value={role.value}
+                                disabled={isSubmitting}
+                              />
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {role.label}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {role.description}
+                                </p>
+                              </div>
+                            </label>
+                          ))}
+                        </RadioGroup>
                         <FormMessage />
                       </FormItem>
                     )}

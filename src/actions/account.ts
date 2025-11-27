@@ -2,12 +2,14 @@
 
 import prisma from "@/lib/prisma";
 import { logSystemAction } from "@/lib/system-log";
+import { Role } from "@/generated/prisma/enums";
 
 type AccountPayload = {
   firstName: string;
   lastName: string;
   email: string;
   password?: string | null;
+  role: Role;
   contactNumber: string;
   image?: string | null;
   designationId: string;
@@ -35,6 +37,7 @@ export const createAccount = async (payload: AccountPayload) => {
       lastName: payload.lastName,
       email: payload.email,
       password: payload.password,
+      role: payload.role,
       contactNumber: payload.contactNumber,
       image: payload.image,
       designation: {
@@ -60,6 +63,7 @@ export const updateAccount = async (id: string, payload: AccountPayload) => {
     firstName: payload.firstName,
     lastName: payload.lastName,
     email: payload.email,
+    role: payload.role,
     contactNumber: payload.contactNumber,
     image: payload.image,
     designation: {

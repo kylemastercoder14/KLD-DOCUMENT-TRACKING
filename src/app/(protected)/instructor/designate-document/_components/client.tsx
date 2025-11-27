@@ -48,6 +48,12 @@ export const Client = () => {
   const [selectedRows, setSelectedRows] = useState<Document[]>([]);
 
   const router = useRouter();
+  const allowedDesignationNames = [
+    "Office of the Vice President for Academic Affairs (VPAA)",
+    "Office of the Vice President for Administrative Affairs (VPADA)",
+    "Office of the President",
+  ];
+
   const { data: designations = [], isLoading } = useQuery<DesignationWithDocuments[]>({
     queryKey: ["designations"],
     queryFn: getDesignations,
@@ -64,7 +70,9 @@ export const Client = () => {
     },
   });
 
-  const activeDesignations = designations.filter((d) => d.isActive);
+  const activeDesignations = designations.filter(
+    (d) => d.isActive && allowedDesignationNames.includes(d.name)
+  );
 
   const filteredDesignations = useMemo(() => {
     if (!designationSearch.trim()) {

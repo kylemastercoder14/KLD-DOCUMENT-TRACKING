@@ -37,6 +37,12 @@ import { IconAlertTriangle } from "@tabler/icons-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
+const allowedDesignationNames = [
+  "Office of the Vice President for Academic Affairs (VPAA)",
+  "Office of the Vice President for Administrative Affairs (VPADA)",
+  "Office of the President",
+];
+
 export const Client = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
@@ -63,7 +69,9 @@ export const Client = () => {
     },
   });
 
-  const activeDesignations = designations.filter((d) => d.isActive);
+  const activeDesignations = designations.filter(
+    (d) => d.isActive && allowedDesignationNames.includes(d.name)
+  );
 
   const filteredDesignations = useMemo(() => {
     if (!designationSearch.trim()) {
