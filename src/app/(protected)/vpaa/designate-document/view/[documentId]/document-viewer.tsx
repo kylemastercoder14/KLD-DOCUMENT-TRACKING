@@ -597,7 +597,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
 
   const handleUploadSignature = (event: ChangeEvent<HTMLInputElement>) => {
     if (!canEditDocument) {
-      toast.error(editDisabledMessage);
+      toast.error("This document cannot be edited.");
       return;
     }
 
@@ -615,7 +615,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
 
   const handleUseStoredSignature = async () => {
     if (!canEditDocument) {
-      toast.error(editDisabledMessage);
+      toast.error("This document cannot be edited.");
       return;
     }
 
@@ -1094,7 +1094,9 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
               </div>
             </div>
             {!canEditDocument ? (
-              <p className="text-sm text-muted-foreground">{editDisabledMessage}</p>
+              <p className="text-sm text-muted-foreground">
+                This document cannot be edited.
+              </p>
             ) : (
               isPdfAttachment && (
                 <p className="text-sm text-muted-foreground">
