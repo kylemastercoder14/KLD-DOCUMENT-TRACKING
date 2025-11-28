@@ -58,7 +58,7 @@ export function SiteHeader({
           {currentDateTime}
         </h1>
         <div className="ml-auto flex items-center gap-2">
-          <NotificationBell />
+          <NotificationBell user={user} />
           <NavUser user={user} />
         </div>
       </div>

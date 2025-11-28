@@ -22,8 +22,28 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { User } from "@/generated/prisma/client";
+import { ROLE_CONFIG, UserRole } from "@/lib/config";
 
-export function NotificationBell() {
+/**
+ * Get notifications path based on user role
+ */
+function getNotificationsPath(role: string): string {
+  const normalized = role.trim().toUpperCase();
+  const matchedKey = (Object.keys(ROLE_CONFIG) as UserRole[]).find(
+    (key) => key === normalized
+  );
+
+  if (matchedKey) {
+    const config = ROLE_CONFIG[matchedKey];
+    return `${config.prefix}/notifications`;
+  }
+
+  // Default fallback
+  return "/instructor/notifications";
+}
+
+export function NotificationBell({ user }: { user?: User }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -143,7 +163,12 @@ export function NotificationBell() {
           <Button
             variant="ghost"
             className="w-full"
-            onClick={() => router.push("/instructor/notifications")}
+            onClick={() => {
+              const notificationsPath = user
+                ? getNotificationsPath(user.role)
+                : "/instructor/notifications";
+              router.push(notificationsPath);
+            }}
           >
             View all notifications
           </Button>

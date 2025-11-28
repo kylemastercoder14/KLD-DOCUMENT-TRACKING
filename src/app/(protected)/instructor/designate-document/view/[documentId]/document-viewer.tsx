@@ -420,6 +420,7 @@ type SignatureLayer = {
   src: string;
   scale: number;
   opacity: number;
+  printedName?: string;
   position: {
     x: number;
     y: number;
@@ -475,6 +476,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
         src,
         scale: 1,
         opacity: 1,
+        printedName: "",
         position: { x: 40, y: 40 },
       };
       setActiveSignatureId(newSignature.id);
@@ -895,14 +897,24 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
         touchAction: "none",
       }}
     >
-      <img
-        src={signature.src}
-        alt={signature.label}
-        width={200}
-        height={100}
-        className="object-contain"
-        draggable={false}
-      />
+      <div className="flex flex-col items-center">
+        <img
+          src={signature.src}
+          alt={signature.label}
+          width={200}
+          height={100}
+          className="object-contain"
+          draggable={false}
+        />
+        {signature.printedName && (
+          <p
+            className="text-xs font-semibold mt-1"
+            style={{ color: "#000", textAlign: "center" }}
+          >
+            {signature.printedName}
+          </p>
+        )}
+      </div>
     </div>
   ));
 
@@ -1058,41 +1070,61 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                   </div>
                 </div>
                 {activeSignature && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Signature Size</Label>
-                      <Input
-                        type="range"
-                        min={0.5}
-                        max={2}
-                        step={0.1}
-                        value={activeSignature.scale}
-                        onChange={(e) => {
-                          const nextScale = Number(e.target.value);
-                          setSignatures((prev) =>
-                            prev.map((signature) =>
-                              signature.id === activeSignature.id
-                                ? { ...signature, scale: nextScale }
-                                : signature
-                            )
-                          );
-                        }}
-                      />
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Signature Size</Label>
+                        <Input
+                          type="range"
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          value={activeSignature.scale}
+                          onChange={(e) => {
+                            const nextScale = Number(e.target.value);
+                            setSignatures((prev) =>
+                              prev.map((signature) =>
+                                signature.id === activeSignature.id
+                                  ? { ...signature, scale: nextScale }
+                                  : signature
+                              )
+                            );
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Signature Opacity</Label>
+                        <Input
+                          type="range"
+                          min={0.3}
+                          max={1}
+                          step={0.1}
+                          value={activeSignature.opacity}
+                          onChange={(e) => {
+                            const nextOpacity = Number(e.target.value);
+                            setSignatures((prev) =>
+                              prev.map((signature) =>
+                                signature.id === activeSignature.id
+                                  ? { ...signature, opacity: nextOpacity }
+                                  : signature
+                              )
+                            );
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Signature Opacity</Label>
+                      <Label htmlFor="printed-name">Printed Name (Optional)</Label>
                       <Input
-                        type="range"
-                        min={0.3}
-                        max={1}
-                        step={0.1}
-                        value={activeSignature.opacity}
+                        id="printed-name"
+                        type="text"
+                        placeholder="Enter your printed name"
+                        value={activeSignature.printedName || ""}
                         onChange={(e) => {
-                          const nextOpacity = Number(e.target.value);
                           setSignatures((prev) =>
                             prev.map((signature) =>
                               signature.id === activeSignature.id
-                                ? { ...signature, opacity: nextOpacity }
+                                ? { ...signature, printedName: e.target.value }
                                 : signature
                             )
                           );

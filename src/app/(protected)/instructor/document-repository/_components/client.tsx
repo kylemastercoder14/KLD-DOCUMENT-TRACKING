@@ -25,6 +25,7 @@ type RepositoryDocumentResponse = {
   category: string;
   priority: "Low" | "Medium" | "High";
   status: "Approved";
+  submittedBy?: string;
   createdAt: string;
 };
 

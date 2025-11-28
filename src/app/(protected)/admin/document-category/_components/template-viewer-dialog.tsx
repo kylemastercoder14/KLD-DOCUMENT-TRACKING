@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface TemplateViewerDialogProps {
   templateUrl: string;
@@ -25,14 +27,35 @@ export function TemplateViewerDialog({
   isOpen,
   onOpenChange,
 }: TemplateViewerDialogProps) {
-  const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = templateUrl;
-    link.download = fileName;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async () => {
+    try {
+      // Try to fetch the file first to ensure it's accessible
+      const response = await fetch(templateUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch template file");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Template downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+      // Fallback to direct link
+      const link = document.createElement("a");
+      link.href = templateUrl;
+      link.download = fileName;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.info("Attempting to download template...");
+    }
   };
 
   // Use Microsoft Office Online viewer for DOCX files
@@ -55,6 +78,10 @@ export function TemplateViewerDialog({
                 </DialogDescription>
               </div>
             </div>
+            <Button onClick={handleDownload} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Download Template
+            </Button>
           </div>
         </DialogHeader>
 

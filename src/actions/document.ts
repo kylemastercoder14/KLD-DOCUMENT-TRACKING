@@ -163,9 +163,78 @@ const generateReferenceId = async (fileCategoryId: string) => {
 };
 
 export const getDocuments = async () => {
+  const session = await getServerSession();
+  if (!session?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { id: true, role: true, designationId: true },
+  });
+
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  // VPAA, VPADA, and President can see all documents
+  const isPrivilegedRole = ["VPAA", "VPADA", "PRESIDENT"].includes(currentUser.role);
+
+  // Dean and HR can see their own documents OR documents forwarded to them
+  const canSeeForwarded = ["DEAN", "HR"].includes(currentUser.role);
+
+  // Build where clause based on user role
+  const where: Prisma.DocumentWhereInput = isPrivilegedRole
+    ? {
+        // For privileged roles, show all documents (all statuses)
+        // No filtering needed - show everything
+      }
+    : canSeeForwarded
+    ? {
+        // For Dean and HR: user's own documents OR documents forwarded to them, AND status is PENDING or APPROVED
+        AND: [
+          {
+            OR: [
+              { submittedById: currentUser.id },
+              {
+                assignatories: {
+                  some: {
+                    userId: currentUser.id,
+                  },
+                },
+              },
+            ],
+          },
+          {
+            status: {
+              in: ["PENDING", "APPROVED"],
+            },
+          },
+        ],
+      }
+    : {
+        // For Instructor: ONLY their own documents, AND status is PENDING or APPROVED
+        AND: [
+          { submittedById: currentUser.id },
+          {
+            status: {
+              in: ["PENDING", "APPROVED"],
+            },
+          },
+        ],
+      };
+
   const docs = await prisma.document.findMany({
+    where,
     include: {
       fileCategory: true,
+      submittedBy: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
       history: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -193,6 +262,9 @@ export const getDocuments = async () => {
       status: STATUS_DISPLAY_MAP[doc.status],
       workflowStage: currentStage,
       isForwarded,
+      submittedBy: doc.submittedBy
+        ? `${doc.submittedBy.firstName} ${doc.submittedBy.lastName}`
+        : "Unknown",
       createdAt: doc.createdAt.toISOString(),
     };
   });
@@ -1038,38 +1110,116 @@ export const getApprovedDocumentsForRepository = async () => {
 
   const currentUser = await prisma.user.findUnique({
     where: { id: session.id },
+    include: {
+      designation: true,
+    },
   });
 
   if (!currentUser) {
     throw new Error("User not found");
   }
 
-  const where: Prisma.DocumentWhereInput = {
-    status: "APPROVED",
-  };
-
-  if (currentUser.role === "INSTRUCTOR") {
-    where.submittedById = currentUser.id;
-  } else if (currentUser.role === "DEAN") {
-    where.submittedBy = {
-      designationId: currentUser.designationId,
-    };
-  } else if (!["VPAA", "VPADA", "PRESIDENT"].includes(currentUser.role)) {
-    // Default to only own documents for other roles
-    where.submittedById = currentUser.id;
-  }
-
-  const documents = await prisma.document.findMany({
-    where,
+  // Get all approved documents first
+  const allApprovedDocs = await prisma.document.findMany({
+    where: {
+      status: "APPROVED",
+    },
     include: {
-      fileCategory: true,
+      fileCategory: {
+        include: {
+          designations: true,
+        },
+      },
+      submittedBy: {
+        include: {
+          designation: true,
+        },
+      },
+      assignatories: {
+        include: {
+          user: true,
+        },
+      },
+      history: {
+        include: {
+          performedBy: {
+            include: {
+              designation: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
     },
     orderBy: {
       updatedAt: "desc",
     },
   });
 
-  return documents.map((doc) => ({
+  // Filter documents based on visibility rules
+  const visibleDocuments = allApprovedDocs.filter((doc) => {
+    // Rule 1: Owner can always see their documents
+    if (doc.submittedById === currentUser.id) {
+      return true;
+    }
+
+    // Rule 2: Users who were forwarded the document can see it
+    const isForwardedToUser = doc.assignatories.some(
+      (assignatory) => assignatory.userId === currentUser.id
+    );
+    if (isForwardedToUser) {
+      return true;
+    }
+
+    // Rule 3: Get document's designation (from fileCategory)
+    const documentDesignations = doc.fileCategory.designations;
+    const documentDesignationNames = documentDesignations.map((d) => d.name);
+
+    // Check if document is under Office of the President
+    const isPresidentOffice = documentDesignationNames.some((name) =>
+      name.toLowerCase().includes("president")
+    );
+
+    // Check if document is under Office of Academic Affairs (VPAA)
+    const isVpaaOffice = documentDesignationNames.some(
+      (name) =>
+        name.toLowerCase().includes("academic affairs") ||
+        name.toLowerCase().includes("vpaa")
+    );
+
+    // Rule 4: If document is under President office, only President users can see it
+    if (isPresidentOffice) {
+      return currentUser.role === "PRESIDENT";
+    }
+
+    // Rule 5: If document is under VPAA, VPAA users can always see it
+    if (isVpaaOffice && currentUser.role === "VPAA") {
+      return true;
+    }
+
+    // Rule 6: Users involved in the workflow can see it
+    const workflowUserIds = new Set<string>();
+    workflowUserIds.add(doc.submittedById);
+    doc.history.forEach((entry) => {
+      if (entry.performedById) {
+        workflowUserIds.add(entry.performedById);
+      }
+    });
+    doc.assignatories.forEach((assignatory) => {
+      workflowUserIds.add(assignatory.userId);
+    });
+
+    if (workflowUserIds.has(currentUser.id)) {
+      return true;
+    }
+
+    // Default: user cannot see the document
+    return false;
+  });
+
+  return visibleDocuments.map((doc) => ({
     id: doc.id,
     referenceId: doc.referenceId,
     title: doc.remarks || doc.fileCategory.name || doc.referenceId,
@@ -1077,6 +1227,9 @@ export const getApprovedDocumentsForRepository = async () => {
     category: doc.fileCategory.name,
     priority: PRIORITY_DISPLAY_MAP[doc.priority],
     status: "Approved",
+    submittedBy: doc.submittedBy
+      ? `${doc.submittedBy.firstName} ${doc.submittedBy.lastName}`
+      : "Unknown",
     createdAt: doc.updatedAt.toISOString(),
   }));
 };

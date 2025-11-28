@@ -28,8 +28,6 @@ import { format } from "date-fns";
 import { replaceDocumentAttachment, type getDocumentById } from "@/actions/document";
 import type { getCurrentUser } from "@/actions/user";
 import { upload } from "@/lib/upload";
-import { canUserEditDocument } from "@/action/game_document";
-import type { DocumentStatus } from "@/generated/prisma/enums";
 
 const docxStyles = `
 .docx-wrapper {
@@ -428,13 +426,6 @@ type SignatureLayer = {
   };
 };
 
-const mapDisplayStatusToInternal = (status: string): DocumentStatus => {
-  const normalized = (status || "").toUpperCase();
-  if (normalized === "APPROVED") return "APPROVED";
-  if (normalized === "REJECTED") return "REJECTED";
-  return "PENDING";
-};
-
 interface DocumentViewerProps {
   document: ViewerDocument;
   currentUser: ViewerUser;
@@ -469,21 +460,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   const hasSignatures = signatures.length > 0;
   const attachmentExtension = getFileExtension(attachment.name || attachment.url);
   const isPdfAttachment = attachmentExtension === "pdf";
-  const internalStatus = mapDisplayStatusToInternal(document.status);
-  const canEditAsUser = canUserEditDocument(
-    currentUser
-      ? {
-          id: currentUser.id,
-          role: currentUser.role,
-          designationId: currentUser.designationId,
-        }
-      : null,
-    { submittedById: document.submittedBy.id, status: internalStatus }
-  );
-  const canEditDocument = canEditAsUser && internalStatus === "PENDING";
-  const editDisabledMessage = !canEditAsUser
-    ? "You do not have permission to modify this document."
-    : "This document has already been finalized and can no longer be modified.";
+  const canEditDocument = !isPdfAttachment;
   const canSavePdf = canEditDocument && hasSignatures;
 
   const generateSignatureId = () =>

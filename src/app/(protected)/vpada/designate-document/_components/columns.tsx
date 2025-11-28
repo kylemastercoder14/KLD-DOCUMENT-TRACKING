@@ -21,6 +21,7 @@ export type Document = {
   status: "Pending" | "Approved" | "Rejected";
   workflowStage?: "INSTRUCTOR" | "DEAN" | "VPAA" | "VPADA" | "PRESIDENT" | "REGISTRAR" | "ARCHIVES";
   isForwarded?: boolean;
+  submittedBy?: string;
   createdAt: Date;
 };
 
@@ -137,6 +138,28 @@ export const documentColumns = ({
     cell: ({ row }) => (
       <div className="ml-3">
         <Badge variant="outline">{row.original.category}</Badge>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "submittedBy",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Submitted By
+          <ChevronsUpDown className="h-4 w-4" />
+        </Button>
+      );
+    },
+    enableSorting: true,
+    cell: ({ row }) => (
+      <div className="ml-3">
+        <span className="text-sm text-foreground">
+          {row.original.submittedBy || "Unknown"}
+        </span>
       </div>
     ),
   },
