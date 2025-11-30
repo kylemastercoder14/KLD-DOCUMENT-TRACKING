@@ -249,6 +249,7 @@ export const getDocuments = async () => {
       submittedBy: doc.submittedBy
         ? `${doc.submittedBy.firstName} ${doc.submittedBy.lastName}`
         : "Unknown",
+      submittedById: doc.submittedById,
       createdAt: doc.createdAt.toISOString(),
     };
   });
@@ -493,11 +494,11 @@ export const deleteDocumentById = async (documentId: string) => {
     throw new Error("Document not found");
   }
 
+  // Only the owner can delete their own document
   const isOwner = document.submittedById === currentUser.id;
-  const isPrivileged = currentUser.role !== "INSTRUCTOR";
 
-  if (!isOwner && !isPrivileged) {
-    throw new Error("You are not allowed to delete this document.");
+  if (!isOwner) {
+    throw new Error("You are not allowed to delete this document. Only the document owner can delete it.");
   }
 
   if (document.status === "APPROVED") {

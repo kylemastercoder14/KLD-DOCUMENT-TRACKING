@@ -19,9 +19,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getDesignations } from "@/actions/designation";
-import { getDocuments } from "@/actions/document";
+import { deleteDocumentById, getDocuments } from "@/actions/document";
 import { DesignationWithDocuments } from "@/types";
 import { DocumentForm } from "@/components/forms/document-form";
 import { DataTable } from "@/components/data-table";
@@ -53,6 +53,7 @@ export const Client = () => {
   const [selectedRows, setSelectedRows] = useState<Document[]>([]);
 
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: designations = [], isLoading } = useQuery<DesignationWithDocuments[]>({
     queryKey: ["designations"],
     queryFn: getDesignations,
@@ -144,10 +145,50 @@ export const Client = () => {
     router.push(`/dean/designate-document/view/${document.id}`);
   }, [router]);
 
-  const handleDelete = useCallback((document: Document) => {
-    toast.info(`Deleting: ${document.referenceId}`);
-    // TODO: Implement delete functionality
-  }, []);
+  // Get current user ID to check ownership
+  const { data: currentUser } = useQuery<{ userId: string }>({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const response = await fetch("/api/current-user");
+      if (!response.ok) {
+        throw new Error("Failed to get current user");
+      }
+      return response.json();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (documentId: string) => deleteDocumentById(documentId),
+    onSuccess: () => {
+      toast.success("Document deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (error: Error) => {
+      console.error("Delete error:", error);
+      toast.error(error.message || "Failed to delete document");
+    },
+  });
+
+  const handleDelete = useCallback(
+    (document: Document) => {
+      // Check ownership before deleting
+      if (!currentUser?.userId) {
+        toast.error("Unable to verify ownership. Please refresh and try again.");
+        return;
+      }
+
+      if (document.submittedById !== currentUser.userId) {
+        toast.error("You are not allowed to delete this document. Only the document owner can delete it.");
+        return;
+      }
+
+      // Confirm deletion
+      if (window.confirm(`Are you sure you want to delete document "${document.referenceId}"? This action cannot be undone.`)) {
+        deleteMutation.mutate(document.id);
+      }
+    },
+    [currentUser, deleteMutation]
+  );
 
   const columns = useMemo(
     () =>

@@ -22,6 +22,7 @@ export type Document = {
   workflowStage?: "INSTRUCTOR" | "DEAN" | "VPAA" | "VPADA" | "PRESIDENT" | "REGISTRAR" | "ARCHIVES";
   isForwarded?: boolean;
   submittedBy?: string;
+  submittedById?: string;
   createdAt: Date;
 };
 

@@ -13,7 +13,7 @@ import {
   XCircle,
   ArrowRight,
 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Document } from "./columns";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,26 @@ export const CellAction = ({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
+  // Get current user ID to check ownership
+  const { data: currentUser } = useQuery<{ userId: string }>({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const response = await fetch("/api/current-user");
+      if (!response.ok) {
+        throw new Error("Failed to get current user");
+      }
+      return response.json();
+    },
+  });
+
+  // Check if current user is the owner
+  const isOwner = useMemo(() => {
+    if (!currentUser?.userId || !data.submittedById) {
+      return false;
+    }
+    return currentUser.userId === data.submittedById;
+  }, [currentUser?.userId, data.submittedById]);
+
   const invalidateDocuments = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["documents"] });
   }, [queryClient]);
@@ -105,6 +125,11 @@ export const CellAction = ({
   });
 
   const handleDelete = () => {
+    // Double-check ownership before deleting
+    if (!isOwner) {
+      toast.error("You are not allowed to delete this document. Only the document owner can delete it.");
+      return;
+    }
     if (onDelete) {
       onDelete(data);
     } else {
@@ -307,13 +332,15 @@ export const CellAction = ({
             </>
           )}
 
-          <DropdownMenuItem
-            onClick={() => setIsDeleteDialogOpen(true)}
-            className="text-destructive"
-          >
-            <Trash2 className="size-4" />
-            Delete
-          </DropdownMenuItem>
+          {isOwner && (
+            <DropdownMenuItem
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="text-destructive"
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
