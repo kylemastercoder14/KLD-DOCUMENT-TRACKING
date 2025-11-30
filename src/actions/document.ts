@@ -414,54 +414,106 @@ export const replaceDocumentAttachment = async (
     throw new Error("Unauthorized");
   }
 
-  const existingDocument = await prisma.document.findUnique({
-    where: { id: documentId },
-    select: { id: true, attachment: true, referenceId: true, status: true },
-  });
-
-  if (!existingDocument) {
-    throw new Error("Document not found");
+  if (!documentId || typeof documentId !== "string" || documentId.trim() === "") {
+    throw new Error("Invalid document ID");
   }
 
-  const updatedDocument = await prisma.document.update({
-    where: { id: documentId },
-    data: {
-      attachment: newAttachmentUrl,
-    },
-  });
-
-  await logSystemAction({
-    userId,
-    action: "Replace document attachment",
-    status: "Success",
-    details: `Document ${existingDocument.referenceId} attachment replaced with signed PDF`,
-  });
-
-  await logDocumentHistoryEntry({
-    documentId,
-    action: DocumentHistoryAction.SIGNATURE_ATTACHED,
-    status: existingDocument.status,
-    stage: determineStageFromRole(session?.role),
-    summary: "Signed PDF uploaded",
-    performedById: userId,
-  });
-
-  if (
-    existingDocument.attachment &&
-    existingDocument.attachment !== newAttachmentUrl
-  ) {
-    await deleteFromS3(existingDocument.attachment).catch((error) => {
-      console.error("Failed to delete previous attachment from S3", error);
+  try {
+    const existingDocument = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: {
+        id: true,
+        attachment: true,
+        referenceId: true,
+        status: true,
+        submittedById: true,
+      },
     });
-  }
 
-  return {
-    id: updatedDocument.id,
-    attachment: updatedDocument.attachment,
-    attachmentName:
-      updatedDocument.attachment.split("/").pop() ||
-      existingDocument.referenceId,
-  };
+    if (!existingDocument) {
+      console.error(`[replaceDocumentAttachment] Document not found:`, {
+        documentId,
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error(`Document not found. The document may have been deleted or you may not have permission to access it.`);
+    }
+
+    // Get current user to check permissions
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+
+    if (!currentUser) {
+      throw new Error("User not found");
+    }
+
+    // Check if user has permission to replace attachment
+    // Allow: owner, assignatories, or privileged roles (VPAA, VPADA, PRESIDENT)
+    const isOwner = existingDocument.submittedById === currentUser.id;
+    const isPrivilegedRole = ["VPAA", "VPADA", "PRESIDENT"].includes(currentUser.role);
+
+    // Check if user is an assignatory
+    const isAssignatory = await prisma.documentAssignatory.findFirst({
+      where: {
+        documentId: documentId,
+        userId: currentUser.id,
+      },
+    });
+
+    if (!isOwner && !isPrivilegedRole && !isAssignatory) {
+      throw new Error("You are not allowed to replace this document's attachment. Only the document owner, assignatories, or privileged roles can do this.");
+    }
+
+    const updatedDocument = await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        attachment: newAttachmentUrl,
+      },
+    });
+
+    await logSystemAction({
+      userId,
+      action: "Replace document attachment",
+      status: "Success",
+      details: `Document ${existingDocument.referenceId} attachment replaced with signed PDF`,
+    });
+
+    await logDocumentHistoryEntry({
+      documentId,
+      action: DocumentHistoryAction.SIGNATURE_ATTACHED,
+      status: existingDocument.status,
+      stage: determineStageFromRole(session?.role),
+      summary: "Signed PDF uploaded",
+      performedById: userId,
+    });
+
+    if (
+      existingDocument.attachment &&
+      existingDocument.attachment !== newAttachmentUrl
+    ) {
+      await deleteFromS3(existingDocument.attachment).catch((error) => {
+        console.error("Failed to delete previous attachment from S3", error);
+      });
+    }
+
+    return {
+      id: updatedDocument.id,
+      attachment: updatedDocument.attachment,
+      attachmentName:
+        updatedDocument.attachment.split("/").pop() ||
+        existingDocument.referenceId,
+    };
+  } catch (error) {
+    // Re-throw the error with more context if it's our custom error
+    if (error instanceof Error) {
+      throw error;
+    }
+    // Handle unexpected errors
+    console.error("[replaceDocumentAttachment] Unexpected error:", error);
+    throw new Error("Failed to replace document attachment");
+  }
 };
 
 export const deleteDocumentById = async (documentId: string) => {
