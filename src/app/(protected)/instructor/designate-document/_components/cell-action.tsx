@@ -191,14 +191,14 @@ export const CellAction = ({
 
           {isOwner && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setIsDeleteDialogOpen(true)}
-                className="text-destructive"
-              >
-                <Trash2 className="size-4" />
-                Delete
-              </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="text-destructive"
+          >
+            <Trash2 className="size-4" />
+            Delete
+          </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

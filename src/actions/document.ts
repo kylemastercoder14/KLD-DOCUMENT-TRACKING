@@ -1202,7 +1202,7 @@ export const getApprovedDocumentsForRepository = async () => {
       return true;
     }
 
-    // Rule 2: Users who were forwarded the document can see it
+    // Rule 2: Users who were explicitly forwarded the document can see it
     const isForwardedToUser = doc.assignatories.some(
       (assignatory) => assignatory.userId === currentUser.id
     );
@@ -1210,6 +1210,19 @@ export const getApprovedDocumentsForRepository = async () => {
       return true;
     }
 
+    // For President, VPADA, and VPAA: ONLY show documents that were forwarded to them
+    // They should NOT see documents based on category/office or workflow involvement
+    if (
+      currentUser.role === "PRESIDENT" ||
+      currentUser.role === "VPADA" ||
+      currentUser.role === "VPAA"
+    ) {
+      // These roles can ONLY see documents they own or were forwarded to them
+      // (already checked above, so return false here)
+      return false;
+    }
+
+    // For other roles (DEAN, HR, INSTRUCTOR): Keep existing logic
     // Rule 3: Get document's designation (from fileCategory)
     const documentDesignations = doc.fileCategory.designations;
     const documentDesignationNames = documentDesignations.map((d) => d.name);
@@ -1227,16 +1240,18 @@ export const getApprovedDocumentsForRepository = async () => {
     );
 
     // Rule 4: If document is under President office, only President users can see it
+    // (But President is already handled above, so this won't apply to them)
     if (isPresidentOffice) {
       return currentUser.role === "PRESIDENT";
     }
 
     // Rule 5: If document is under VPAA, VPAA users can always see it
+    // (But VPAA is already handled above, so this won't apply to them)
     if (isVpaaOffice && currentUser.role === "VPAA") {
       return true;
     }
 
-    // Rule 6: Users involved in the workflow can see it
+    // Rule 6: Users involved in the workflow can see it (for non-privileged roles)
     const workflowUserIds = new Set<string>();
     workflowUserIds.add(doc.submittedById);
     doc.history.forEach((entry) => {

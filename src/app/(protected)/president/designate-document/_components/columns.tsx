@@ -114,7 +114,7 @@ export const documentColumns = ({
       <div className="ml-3 flex items-center gap-2">
         <FileText className="h-4 w-4 text-muted-foreground" />
         <Link
-          href={`/dean/designate-document/view/${row.original.id}`}
+          href={`/president/designate-document/view/${row.original.id}`}
           className="text-sm font-semibold text-primary hover:underline break-all"
         >
           {row.original.attachmentName}

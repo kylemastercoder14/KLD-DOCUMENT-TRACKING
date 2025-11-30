@@ -63,11 +63,26 @@ const docxStyles = `
 `;
 
 const HTML2CANVAS_SCALE = 2;
-const containsLabColor = (value: string) =>
-  typeof value === "string" && value.toLowerCase().includes("lab(");
+
+// Check for all unsupported color functions that html2canvas can't parse
+const containsUnsupportedColor = (value: string) => {
+  if (typeof value !== "string") return false;
+  const lower = value.toLowerCase();
+  return (
+    lower.includes("lab(") ||
+    lower.includes("lch(") ||
+    lower.includes("oklab(") ||
+    lower.includes("oklch(") ||
+    lower.includes("color-mix(") ||
+    lower.includes("color-contrast(")
+  );
+};
+
+// Keep the old function name for backward compatibility
+const containsLabColor = containsUnsupportedColor;
 
 const removeLabRuleBlocks = (value: string) => {
-  if (!containsLabColor(value)) return value;
+  if (!containsUnsupportedColor(value)) return value;
 
   let sanitized = "";
   let cursor = 0;
@@ -232,7 +247,7 @@ const loadImageElement = (src: string) =>
     // Only set crossOrigin for non-data URLs (external images)
     // Data URLs don't need crossOrigin and setting it can cause issues
     if (!src.startsWith("data:")) {
-      image.crossOrigin = "anonymous";
+    image.crossOrigin = "anonymous";
     }
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("Failed to load signature image"));
@@ -464,8 +479,9 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   const hasSignatures = signatures.length > 0;
   const attachmentExtension = getFileExtension(attachment.name || attachment.url);
   const isPdfAttachment = attachmentExtension === "pdf";
-  const canEditDocument = !isPdfAttachment;
-  const canSavePdf = canEditDocument && hasSignatures;
+  // Always allow signature attachment, regardless of document type
+  const canEditDocument = true; // Always allow editing for signature attachment
+  const canSavePdf = hasSignatures; // Allow saving if there are signatures
 
   const generateSignatureId = () =>
     typeof crypto !== "undefined" && crypto.randomUUID
@@ -495,7 +511,9 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   }, [document.attachment, document.attachmentName]);
 
   useEffect(() => {
-    if (!canEditDocument && hasSignatures) {
+    // Removed: No longer clear signatures when document is PDF
+    // Signatures should always be available for attachment
+    if (false && hasSignatures) {
       setSignatures([]);
       setActiveSignatureId(null);
     }
@@ -600,10 +618,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   }, [attachment.url, isPdfAttachment]);
 
   const handleUploadSignature = (event: ChangeEvent<HTMLInputElement>) => {
-    if (!canEditDocument) {
-      toast.error("This document cannot be edited.");
-      return;
-    }
+    // Always allow signature operations
 
     const file = event.target.files?.[0];
     if (!file) return;
@@ -618,10 +633,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   };
 
   const handleUseStoredSignature = async () => {
-    if (!canEditDocument) {
-      toast.error("This document cannot be edited.");
-      return;
-    }
+    // Always allow signature operations
 
     const stored = currentUser?.signature?.imageData;
     if (!stored) {
@@ -648,10 +660,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   };
 
   const handleRemoveSignature = () => {
-    if (!canEditDocument) {
-      return;
-    }
-
+    // Always allow removing signatures
     if (!hasSignatures) {
       return;
     }
@@ -753,11 +762,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   const handleSavePdf = async () => {
     if (!wrapperRef.current || typeof window === "undefined") return;
 
-    if (!canEditDocument) {
-      toast.error("This document is already stored as a signed PDF.");
-      return;
-    }
-
+    // Always allow saving PDF with signatures, even if document is already a PDF
     if (!hasSignatures) {
       toast.error("Attach at least one signature before saving to PDF.");
       return;
@@ -977,7 +982,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
           setSignatures([]);
           setActiveSignatureId(null);
 
-          router.push("/instructor/designate-document");
+          router.push("/hr/designate-document");
           router.refresh();
           return url;
         } catch (error) {
@@ -1173,7 +1178,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                   "Use Stored Signature"
                 )}
               </Button>
-              {canEditDocument && hasSignatures && (
+              {hasSignatures && (
                 <Button variant="ghost" onClick={handleRemoveSignature}>
                   Remove Active Signature
                 </Button>
@@ -1193,17 +1198,10 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                 </Button>
               </div>
             </div>
-            {!canEditDocument ? (
+            {isPdfAttachment && (
               <p className="text-sm text-muted-foreground">
-                This document cannot be edited.
+                This attachment is a PDF. You can add your signature and save to generate an updated version.
               </p>
-            ) : (
-              isPdfAttachment && (
-                <p className="text-sm text-muted-foreground">
-                  This attachment is already a signed PDF. You can still add your signature and
-                  save to generate an updated version.
-                </p>
-              )
             )}
             {canEditDocument && hasSignatures && (
               <>
