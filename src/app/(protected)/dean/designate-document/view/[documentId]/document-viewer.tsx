@@ -191,60 +191,6 @@ const sanitizeLabColorUsage = (value: string) => {
   // Use the new comprehensive sanitization
   return sanitizeUnsupportedColors(withoutBlocks);
 };
-    if (matchIndex === -1) {
-      sanitized += withoutBlocks.slice(cursor);
-      break;
-    }
-
-    sanitized += withoutBlocks.slice(cursor, matchIndex);
-
-    let depth = 0;
-    let endIndex = matchIndex;
-    while (endIndex < withoutBlocks.length) {
-      const char = withoutBlocks[endIndex];
-      if (char === "(") {
-        depth += 1;
-      } else if (char === ")") {
-        depth -= 1;
-        if (depth === 0) {
-          endIndex += 1;
-          break;
-        }
-      }
-      endIndex += 1;
-    }
-
-    while (endIndex < withoutBlocks.length && /\s/.test(withoutBlocks[endIndex])) {
-      endIndex += 1;
-    }
-
-    let terminatorIndex = endIndex;
-    while (
-      terminatorIndex < withoutBlocks.length &&
-      withoutBlocks[terminatorIndex] !== ";" &&
-      withoutBlocks[terminatorIndex] !== "}"
-    ) {
-      terminatorIndex += 1;
-    }
-
-    if (terminatorIndex < withoutBlocks.length && withoutBlocks[terminatorIndex] === ";") {
-      terminatorIndex += 1;
-    }
-
-    cursor = endIndex;
-
-    sanitized = sanitized.replace(/\s*$/g, "");
-
-    if (terminatorIndex < withoutBlocks.length && withoutBlocks[terminatorIndex - 1] === "}") {
-      sanitized += "}";
-      cursor = terminatorIndex;
-    } else {
-      cursor = terminatorIndex;
-    }
-  }
-
-  return sanitized;
-};
 
 type SignatureRect = {
   x: number;
