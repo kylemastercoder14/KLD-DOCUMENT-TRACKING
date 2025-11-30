@@ -191,37 +191,21 @@ export const getDocuments = async () => {
       }
     : canSeeForwarded
     ? {
-        // For Dean and HR: user's own documents OR documents forwarded to them, AND status is PENDING or APPROVED
-        AND: [
+        // For Dean and HR: user's own documents OR documents forwarded to them, show all statuses
+        OR: [
+          { submittedById: currentUser.id },
           {
-            OR: [
-              { submittedById: currentUser.id },
-              {
-                assignatories: {
-                  some: {
-                    userId: currentUser.id,
-                  },
-                },
+            assignatories: {
+              some: {
+                userId: currentUser.id,
               },
-            ],
-          },
-          {
-            status: {
-              in: ["PENDING", "APPROVED"],
             },
           },
         ],
       }
     : {
-        // For Instructor: ONLY their own documents, AND status is PENDING or APPROVED
-        AND: [
-          { submittedById: currentUser.id },
-          {
-            status: {
-              in: ["PENDING", "APPROVED"],
-            },
-          },
-        ],
+        // For Instructor: ONLY their own documents, show all statuses
+        submittedById: currentUser.id,
       };
 
   const docs = await prisma.document.findMany({

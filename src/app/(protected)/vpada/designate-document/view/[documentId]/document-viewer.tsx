@@ -229,7 +229,11 @@ const loadImageElement = (src: string) =>
       return;
     }
     const image = new window.Image();
-    image.crossOrigin = "anonymous";
+    // Only set crossOrigin for non-data URLs (external images)
+    // Data URLs don't need crossOrigin and setting it can cause issues
+    if (!src.startsWith("data:")) {
+      image.crossOrigin = "anonymous";
+    }
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("Failed to load signature image"));
     image.src = src;
@@ -854,13 +858,109 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
             }
           }
 
-          const imgData = canvas.toDataURL("image/png");
+          // Validate canvas dimensions
+          if (canvas.width === 0 || canvas.height === 0) {
+            throw new Error("Canvas has invalid dimensions");
+          }
+
+          // Check if canvas is too large (jsPDF has limits)
+          // Use a let variable so we can reassign if scaling is needed
+          let workingCanvas: HTMLCanvasElement = canvas;
+          const MAX_DIMENSION = 14400; // jsPDF maximum dimension
+          if (canvas.width > MAX_DIMENSION || canvas.height > MAX_DIMENSION) {
+            // Scale down if too large
+            const scale = Math.min(MAX_DIMENSION / canvas.width, MAX_DIMENSION / canvas.height);
+            const scaledCanvas = dom.createElement("canvas");
+            scaledCanvas.width = Math.floor(canvas.width * scale);
+            scaledCanvas.height = Math.floor(canvas.height * scale);
+            const scaledContext = scaledCanvas.getContext("2d");
+            if (scaledContext) {
+              scaledContext.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+              workingCanvas = scaledCanvas;
+            }
+          }
+
+          // Convert canvas to data URL with error handling
+          let imgData: string;
+
+          // Try toDataURL first
+          try {
+            imgData = workingCanvas.toDataURL("image/png", 0.95);
+            // Validate data URL - check it's not empty and has proper format
+            if (!imgData || imgData.length < 100 || !imgData.startsWith("data:image/png;base64,")) {
+              throw new Error("Invalid data URL format");
+            }
+            // Validate base64 data exists
+            const base64Data = imgData.split(",")[1];
+            if (!base64Data || base64Data.length < 50) {
+              throw new Error("Invalid base64 data");
+            }
+          } catch (dataUrlError) {
+            console.error("toDataURL failed, trying toBlob:", dataUrlError);
+            // Fallback: try converting to blob first, then to data URL
+            try {
+              const blob = await new Promise<Blob>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                  reject(new Error("Blob conversion timeout"));
+                }, 10000);
+
+                workingCanvas.toBlob(
+                  (blob) => {
+                    clearTimeout(timeout);
+                    if (!blob || blob.size === 0) {
+                      reject(new Error("Failed to convert canvas to blob or blob is empty"));
+                      return;
+                    }
+                    resolve(blob);
+                  },
+                  "image/png",
+                  0.95
+                );
+              });
+
+              const reader = new FileReader();
+              imgData = await new Promise<string>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                  reject(new Error("FileReader timeout"));
+                }, 10000);
+
+                reader.onload = () => {
+                  clearTimeout(timeout);
+                  const result = reader.result;
+                  if (typeof result === "string" && result.length > 100 && result.startsWith("data:image/png;base64,")) {
+                    resolve(result);
+                  } else {
+                    reject(new Error("Failed to read blob as valid data URL"));
+                  }
+                };
+                reader.onerror = () => {
+                  clearTimeout(timeout);
+                  reject(new Error("Failed to read blob"));
+                };
+                reader.readAsDataURL(blob);
+              });
+            } catch (blobError) {
+              console.error("Both toDataURL and toBlob failed:", blobError);
+              throw new Error(`Failed to export canvas: ${blobError instanceof Error ? blobError.message : "Unknown error"}. The canvas may be tainted due to CORS restrictions.`);
+            }
+          }
+
           const pdf = new jsPDF({
-            orientation: canvas.width > canvas.height ? "l" : "p",
+            orientation: workingCanvas.width > workingCanvas.height ? "l" : "p",
             unit: "px",
-            format: [canvas.width, canvas.height],
+            format: [workingCanvas.width, workingCanvas.height],
           });
-          pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+
+          // Add image with error handling
+          try {
+            pdf.addImage(imgData, "PNG", 0, 0, workingCanvas.width, workingCanvas.height);
+          } catch (addImageError) {
+            // If addImage fails, try using the image data directly
+            console.warn("Direct addImage failed, trying alternative approach:", addImageError);
+            // Create an image element and load it first
+            const img = await loadImageElement(imgData);
+            pdf.addImage(img, "PNG", 0, 0, workingCanvas.width, workingCanvas.height);
+          }
 
           const pdfBlob = pdf.output("blob");
           const pdfFile = new File([pdfBlob], `${document.referenceId}.pdf`, {

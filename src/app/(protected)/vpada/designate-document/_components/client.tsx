@@ -210,7 +210,7 @@ export const Client = () => {
                 Submit Document
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuContent align="end" className="w-80 max-h-[500px] overflow-y-auto">
               {isLoading ? (
                 <div className="p-2 text-sm text-muted-foreground">Loading...</div>
               ) : filteredDesignations.length === 0 ? (
@@ -253,7 +253,7 @@ export const Client = () => {
                             <DropdownMenuSubTrigger>
                               {designation.name}
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="w-80">
+                            <DropdownMenuSubContent className="w-80 max-h-[400px] overflow-y-auto">
                               <div className="p-2 border-b">
                                 <div className="relative">
                                   <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
