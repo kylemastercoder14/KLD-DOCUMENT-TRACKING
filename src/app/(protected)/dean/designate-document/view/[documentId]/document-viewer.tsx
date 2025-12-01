@@ -1244,15 +1244,10 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                 </Button>
               </div>
             </div>
-            {!canEditDocument ? (
-              <p className="text-sm text-muted-foreground">{editDisabledMessage}</p>
-            ) : (
-              isPdfAttachment && (
-                <p className="text-sm text-muted-foreground">
-                  This attachment is already a signed PDF. You can still add your signature and
-                  save to generate an updated version.
-                </p>
-              )
+            {isPdfAttachment && (
+              <p className="text-sm text-muted-foreground">
+                This attachment is a PDF. You can add your signature and save to generate an updated version.
+              </p>
             )}
             {canEditDocument && hasSignatures && (
               <>
