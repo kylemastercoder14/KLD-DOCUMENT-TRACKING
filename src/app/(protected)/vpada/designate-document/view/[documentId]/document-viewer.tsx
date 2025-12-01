@@ -105,7 +105,6 @@ const removeLabRuleBlocks = (value: string) => {
     }
 
     if (matchIndex === -1) {
-    if (matchIndex === -1) {
       sanitized += value.slice(cursor);
       break;
     }
