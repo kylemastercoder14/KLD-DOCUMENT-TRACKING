@@ -1223,6 +1223,9 @@ export const getApprovedDocumentsForRepository = async () => {
     }
 
     // For other roles (DEAN, HR, INSTRUCTOR): Keep existing logic
+    // Note: President, VPADA, and VPAA are already handled above with early return
+    // They can only see documents they own or were forwarded to them
+
     // Rule 3: Get document's designation (from fileCategory)
     const documentDesignations = doc.fileCategory.designations;
     const documentDesignationNames = documentDesignations.map((d) => d.name);
@@ -1239,16 +1242,16 @@ export const getApprovedDocumentsForRepository = async () => {
         name.toLowerCase().includes("vpaa")
     );
 
-    // Rule 4: If document is under President office, only President users can see it
-    // (But President is already handled above, so this won't apply to them)
+    // Rule 4: If document is under President office, other roles cannot see it
+    // (President is already handled above with early return)
     if (isPresidentOffice) {
-      return currentUser.role === "PRESIDENT";
+      return false; // Only President can see these, but they're already filtered above
     }
 
-    // Rule 5: If document is under VPAA, VPAA users can always see it
-    // (But VPAA is already handled above, so this won't apply to them)
-    if (isVpaaOffice && currentUser.role === "VPAA") {
-      return true;
+    // Rule 5: If document is under VPAA office, other roles cannot see it
+    // (VPAA is already handled above with early return)
+    if (isVpaaOffice) {
+      return false; // Only VPAA can see these, but they're already filtered above
     }
 
     // Rule 6: Users involved in the workflow can see it (for non-privileged roles)
