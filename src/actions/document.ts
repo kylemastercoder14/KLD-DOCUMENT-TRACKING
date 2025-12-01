@@ -177,17 +177,29 @@ export const getDocuments = async () => {
     throw new Error("User not found");
   }
 
-  // VPAA, VPADA, and President can see all documents
-  const isPrivilegedRole = ["VPAA", "VPADA", "PRESIDENT"].includes(currentUser.role);
+  // VPAA can see all documents
+  const isVpaa = currentUser.role === "VPAA";
+
+  // VPADA and President can ONLY see documents forwarded to them (not all documents)
+  const isVpadaOrPresident = ["VPADA", "PRESIDENT"].includes(currentUser.role);
 
   // Dean and HR can see their own documents OR documents forwarded to them
   const canSeeForwarded = ["DEAN", "HR"].includes(currentUser.role);
 
   // Build where clause based on user role
-  const where: Prisma.DocumentWhereInput = isPrivilegedRole
+  const where: Prisma.DocumentWhereInput = isVpaa
     ? {
-        // For privileged roles, show all documents (all statuses)
+        // For VPAA, show all documents (all statuses)
         // No filtering needed - show everything
+      }
+    : isVpadaOrPresident
+    ? {
+        // For VPADA and President: ONLY documents forwarded to them (not all documents)
+        assignatories: {
+          some: {
+            userId: currentUser.id,
+          },
+        },
       }
     : canSeeForwarded
     ? {
@@ -1210,14 +1222,31 @@ export const getApprovedDocumentsForRepository = async () => {
       return true;
     }
 
-    // For President, VPADA, and VPAA: ONLY show documents that were forwarded to them
+    // For VPADA and VPAA: ONLY show documents that were forwarded to them
     // They should NOT see documents based on category/office or workflow involvement
-    if (
-      currentUser.role === "PRESIDENT" ||
-      currentUser.role === "VPADA" ||
-      currentUser.role === "VPAA"
-    ) {
+    if (currentUser.role === "VPADA" || currentUser.role === "VPAA") {
       // These roles can ONLY see documents they own or were forwarded to them
+      // (already checked above, so return false here)
+      return false;
+    }
+
+    // For President: Special repository visibility rule
+    // President can see all approved documents under President's office, even if not forwarded
+    if (currentUser.role === "PRESIDENT") {
+      // Check if document is under Office of the President
+      const documentDesignations = doc.fileCategory.designations;
+      const documentDesignationNames = documentDesignations.map((d) => d.name);
+
+      const isPresidentOffice = documentDesignationNames.some((name) =>
+        name.toLowerCase().includes("president")
+      );
+
+      // If document belongs to President's office, President can see it
+      if (isPresidentOffice) {
+        return true;
+      }
+
+      // Otherwise, President can only see documents they own or were forwarded to them
       // (already checked above, so return false here)
       return false;
     }
