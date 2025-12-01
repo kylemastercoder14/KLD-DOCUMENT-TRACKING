@@ -288,42 +288,32 @@ const sanitizeComputedStyles = (element: HTMLElement, doc: Document) => {
   const computedStyle = doc.defaultView.getComputedStyle(element);
   if (!computedStyle) return;
 
-  const colorProps = [
-    "color",
-    "backgroundColor",
-    "background",
-    "borderColor",
-    "borderTopColor",
-    "borderRightColor",
-    "borderBottomColor",
-    "borderLeftColor",
-    "border",
-    "borderTop",
-    "borderRight",
-    "borderBottom",
-    "borderLeft",
-    "outlineColor",
-    "outline",
-    "textDecorationColor",
-    "textDecoration",
-    "columnRuleColor",
-    "boxShadow",
-    "textShadow",
-  ];
+  // Get all CSS properties and sanitize them
+  const allProps = Array.from(computedStyle);
 
-  colorProps.forEach((prop) => {
+  allProps.forEach((prop) => {
     try {
       const value = computedStyle.getPropertyValue(prop);
       if (value && containsUnsupportedColor(value)) {
         // Replace with safe fallback based on property type
-        if (prop.includes("background")) {
+        if (prop.includes("background") || prop === "background") {
           element.style.setProperty(prop, "#ffffff", "important");
         } else if (prop.includes("border") || prop.includes("outline")) {
-          element.style.setProperty(prop, "1px solid #000", "important");
+          // Preserve border width/style if it exists
+          const borderWidth = computedStyle.getPropertyValue(prop.replace("Color", "Width")) || "1px";
+          const borderStyle = computedStyle.getPropertyValue(prop.replace("Color", "Style")) || "solid";
+          if (prop.includes("Color")) {
+            element.style.setProperty(prop, "#000000", "important");
+          } else {
+            element.style.setProperty(prop, `${borderWidth} ${borderStyle} #000000`, "important");
+          }
         } else if (prop.includes("shadow")) {
           element.style.setProperty(prop, "none", "important");
+        } else if (prop === "color") {
+          element.style.setProperty(prop, "#000000", "important");
         } else {
-          element.style.setProperty(prop, "#000", "important");
+          // For any other property with unsupported colors, set to transparent or remove
+          element.style.setProperty(prop, "transparent", "important");
         }
       }
     } catch (error) {
@@ -331,6 +321,45 @@ const sanitizeComputedStyles = (element: HTMLElement, doc: Document) => {
       console.debug("Error sanitizing property", prop, error);
     }
   });
+
+  // Also sanitize CSS custom properties (variables) that might contain unsupported colors
+  try {
+    const root = doc.documentElement;
+    const rootStyle = doc.defaultView?.getComputedStyle(root);
+    if (rootStyle) {
+      // Get all CSS variables
+      const cssText = rootStyle.cssText || "";
+      if (containsUnsupportedColor(cssText)) {
+        // Override problematic CSS variables with safe values
+        const safeOverrides: Record<string, string> = {
+          "--background": "#ffffff",
+          "--foreground": "#000000",
+          "--card": "#ffffff",
+          "--card-foreground": "#000000",
+          "--popover": "#ffffff",
+          "--popover-foreground": "#000000",
+          "--primary": "#000000",
+          "--primary-foreground": "#ffffff",
+          "--secondary": "#f5f5f5",
+          "--secondary-foreground": "#000000",
+          "--muted": "#f5f5f5",
+          "--muted-foreground": "#666666",
+          "--accent": "#f5f5f5",
+          "--accent-foreground": "#000000",
+          "--destructive": "#ef4444",
+          "--border": "#e5e5e5",
+          "--input": "#e5e5e5",
+          "--ring": "#000000",
+        };
+
+        Object.entries(safeOverrides).forEach(([varName, safeValue]) => {
+          root.style.setProperty(varName, safeValue, "important");
+        });
+      }
+    }
+  } catch (error) {
+    console.debug("Error sanitizing CSS variables", error);
+  }
 
   // Recursively sanitize all children
   for (const child of Array.from(element.children)) {
@@ -830,16 +859,74 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
             onclone: (clonedDoc, element) => {
               try {
                 if (element instanceof HTMLElement && clonedDoc.defaultView) {
+                  // First, override CSS variables in the root to prevent oklch() from being used
+                  const root = clonedDoc.documentElement;
+                  const safeOverrides: Record<string, string> = {
+                    "--background": "#ffffff",
+                    "--foreground": "#000000",
+                    "--card": "#ffffff",
+                    "--card-foreground": "#000000",
+                    "--popover": "#ffffff",
+                    "--popover-foreground": "#000000",
+                    "--primary": "#000000",
+                    "--primary-foreground": "#ffffff",
+                    "--secondary": "#f5f5f5",
+                    "--secondary-foreground": "#000000",
+                    "--muted": "#f5f5f5",
+                    "--muted-foreground": "#666666",
+                    "--accent": "#f5f5f5",
+                    "--accent-foreground": "#000000",
+                    "--destructive": "#ef4444",
+                    "--border": "#e5e5e5",
+                    "--input": "#e5e5e5",
+                    "--ring": "#000000",
+                    "--chart-1": "#3b82f6",
+                    "--chart-2": "#10b981",
+                    "--chart-3": "#f59e0b",
+                    "--chart-4": "#ef4444",
+                    "--chart-5": "#8b5cf6",
+                    "--sidebar": "#ffffff",
+                    "--sidebar-foreground": "#000000",
+                    "--sidebar-primary": "#000000",
+                    "--sidebar-primary-foreground": "#ffffff",
+                    "--sidebar-accent": "#f5f5f5",
+                    "--sidebar-accent-foreground": "#000000",
+                    "--sidebar-border": "#e5e5e5",
+                    "--sidebar-ring": "#000000",
+                  };
+
+                  // Override all CSS variables with safe values
+                  Object.entries(safeOverrides).forEach(([varName, safeValue]) => {
+                    root.style.setProperty(varName, safeValue, "important");
+                  });
+
                   // Sanitize computed styles in the cloned document
                   sanitizeComputedStyles(element, clonedDoc);
 
-                  // Remove any remaining style attributes with lab() colors
+                  // Remove any remaining style attributes with unsupported colors
                   const allElements = element.querySelectorAll("*");
                   allElements.forEach((el) => {
                     if (el instanceof HTMLElement) {
                       const styleAttr = el.getAttribute("style");
-                      if (styleAttr && containsLabColor(styleAttr)) {
+                      if (styleAttr && containsUnsupportedColor(styleAttr)) {
                         el.setAttribute("style", sanitizeUnsupportedColors(styleAttr));
+                      }
+
+                      // Also sanitize any computed styles that might have been missed
+                      try {
+                        const computedStyle = clonedDoc.defaultView?.getComputedStyle(el);
+                        if (computedStyle) {
+                          const bgColor = computedStyle.getPropertyValue("background-color");
+                          const color = computedStyle.getPropertyValue("color");
+                          if (bgColor && containsUnsupportedColor(bgColor)) {
+                            el.style.setProperty("background-color", "#ffffff", "important");
+                          }
+                          if (color && containsUnsupportedColor(color)) {
+                            el.style.setProperty("color", "#000000", "important");
+                          }
+                        }
+                      } catch (e) {
+                        // Ignore errors
                       }
                     }
                   });
