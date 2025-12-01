@@ -124,75 +124,54 @@ const removeLabRuleBlocks = (value: string) => {
   return sanitized;
 };
 
+// Remove all unsupported color functions from CSS
+const sanitizeUnsupportedColors = (value: string) => {
+  if (!containsUnsupportedColor(value)) {
+    return value;
+  }
+
+  // List of unsupported color functions to remove
+  const unsupportedFunctions = [
+    "lab(",
+    "lch(",
+    "oklab(",
+    "oklch(",
+    "color-mix(",
+    "color-contrast(",
+  ];
+
+  let sanitized = value;
+
+  for (const func of unsupportedFunctions) {
+    const regex = new RegExp(
+      `\\b${func.replace(/[()]/g, "\\$&")}[^)]*\\)`,
+      "gi"
+    );
+
+    // Replace with a safe fallback color (black for most cases)
+    sanitized = sanitized.replace(regex, (match) => {
+      // Try to determine if it's a background or text color based on context
+      const before = sanitized.substring(0, sanitized.indexOf(match));
+      const isBackground = /background/i.test(before);
+      return isBackground ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
+    });
+  }
+
+  return sanitized;
+};
+
 const sanitizeLabColorUsage = (value: string) => {
-  if (!containsLabColor(value)) {
+  if (!containsUnsupportedColor(value)) {
     return value;
   }
 
   const withoutBlocks = removeLabRuleBlocks(value);
-  if (!containsLabColor(withoutBlocks)) {
+  if (!containsUnsupportedColor(withoutBlocks)) {
     return withoutBlocks;
   }
 
-  let sanitized = "";
-  let cursor = 0;
-  const lowerValue = withoutBlocks.toLowerCase();
-
-  while (cursor < withoutBlocks.length) {
-    const matchIndex = lowerValue.indexOf("lab(", cursor);
-    if (matchIndex === -1) {
-      sanitized += withoutBlocks.slice(cursor);
-      break;
-    }
-
-    sanitized += withoutBlocks.slice(cursor, matchIndex);
-
-    let depth = 0;
-    let endIndex = matchIndex;
-    while (endIndex < withoutBlocks.length) {
-      const char = withoutBlocks[endIndex];
-      if (char === "(") {
-        depth += 1;
-      } else if (char === ")") {
-        depth -= 1;
-        if (depth === 0) {
-          endIndex += 1;
-          break;
-        }
-      }
-      endIndex += 1;
-    }
-
-    while (endIndex < withoutBlocks.length && /\s/.test(withoutBlocks[endIndex])) {
-      endIndex += 1;
-    }
-
-    let terminatorIndex = endIndex;
-    while (
-      terminatorIndex < withoutBlocks.length &&
-      withoutBlocks[terminatorIndex] !== ";" &&
-      withoutBlocks[terminatorIndex] !== "}"
-    ) {
-      terminatorIndex += 1;
-    }
-
-    if (terminatorIndex < withoutBlocks.length && withoutBlocks[terminatorIndex] === ";") {
-      terminatorIndex += 1;
-    }
-
-    cursor = endIndex;
-
-    sanitized = sanitized.replace(/\s*$/g, "");
-
-    if (terminatorIndex < withoutBlocks.length && withoutBlocks[terminatorIndex - 1] === "}") {
-      sanitized += "}";
-      cursor = terminatorIndex;
-    } else {
-      cursor = terminatorIndex;
-    }
-  }
-
-  return sanitized;
+  // Use the new comprehensive sanitization
+  return sanitizeUnsupportedColors(withoutBlocks);
 };
 
 type SignatureRect = {
@@ -255,16 +234,49 @@ const loadImageElement = (src: string) =>
   });
 
 const sanitizeLabColors = (root: HTMLElement) => {
+  // Sanitize inline styles
   root.querySelectorAll<HTMLElement>("[style]").forEach((el) => {
     const styleAttr = el.getAttribute("style");
-    if (!styleAttr || !containsLabColor(styleAttr)) return;
-    el.setAttribute("style", sanitizeLabColorUsage(styleAttr));
+    if (!styleAttr || !containsUnsupportedColor(styleAttr)) return;
+    el.setAttribute("style", sanitizeUnsupportedColors(styleAttr));
   });
+
+  // Sanitize style elements
   root.querySelectorAll<HTMLStyleElement>("style").forEach((styleEl) => {
     const cssText = styleEl.textContent;
-    if (!cssText || !containsLabColor(cssText)) return;
-    styleEl.textContent = sanitizeLabColorUsage(cssText);
+    if (!cssText || !containsUnsupportedColor(cssText)) return;
+    styleEl.textContent = sanitizeUnsupportedColors(cssText);
   });
+
+  // Also sanitize any computed styles that might have unsupported colors
+  if (typeof window !== "undefined") {
+    const allElements = root.querySelectorAll("*");
+    allElements.forEach((el) => {
+      if (el instanceof HTMLElement) {
+        try {
+          const computedStyle = window.getComputedStyle(el);
+          const colorProps = ["color", "backgroundColor", "borderColor"];
+          colorProps.forEach((prop) => {
+            try {
+              const value = computedStyle.getPropertyValue(prop);
+              if (value && containsUnsupportedColor(value)) {
+                // Set a safe fallback
+                if (prop === "backgroundColor") {
+                  el.style.setProperty(prop, "#ffffff", "important");
+                } else {
+                  el.style.setProperty(prop, "#000000", "important");
+                }
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          });
+        } catch (e) {
+          // Ignore errors for elements that can't be styled
+        }
+      }
+    });
+  }
 };
 
 const sanitizeComputedStyles = (element: HTMLElement, doc: Document) => {
@@ -302,7 +314,7 @@ const sanitizeComputedStyles = (element: HTMLElement, doc: Document) => {
   colorProps.forEach((prop) => {
     try {
       const value = computedStyle.getPropertyValue(prop);
-      if (value && containsLabColor(value)) {
+      if (value && containsUnsupportedColor(value)) {
         // Replace with safe fallback based on property type
         if (prop.includes("background")) {
           element.style.setProperty(prop, "#ffffff", "important");
@@ -345,7 +357,7 @@ const collectSanitizedGlobalStyles = async (): Promise<string[]> => {
         const cssText = node.textContent ?? "";
         if (!cssText) continue;
         // Skip stylesheets that contain lab() colors entirely
-        if (containsLabColor(cssText)) {
+        if (containsUnsupportedColor(cssText)) {
           console.warn("Skipping stylesheet with lab() colors:", node.id || "inline");
           continue;
         }
@@ -356,7 +368,7 @@ const collectSanitizedGlobalStyles = async (): Promise<string[]> => {
           if (!response.ok) continue;
           const cssText = await response.text();
           // Skip stylesheets that contain lab() colors entirely
-          if (containsLabColor(cssText)) {
+          if (containsUnsupportedColor(cssText)) {
             console.warn("Skipping external stylesheet with lab() colors:", node.href);
             continue;
           }
@@ -791,7 +803,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
         for (const node of styleNodes) {
           try {
             const cssText = node.textContent ?? "";
-            if (containsLabColor(cssText)) {
+            if (containsUnsupportedColor(cssText)) {
               node.disabled = true;
               disabledStylesheets.push(node);
             }
@@ -827,7 +839,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                     if (el instanceof HTMLElement) {
                       const styleAttr = el.getAttribute("style");
                       if (styleAttr && containsLabColor(styleAttr)) {
-                        el.setAttribute("style", sanitizeLabColorUsage(styleAttr));
+                        el.setAttribute("style", sanitizeUnsupportedColors(styleAttr));
                       }
                     }
                   });
