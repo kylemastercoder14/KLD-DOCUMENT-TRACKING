@@ -177,29 +177,38 @@ export const getDocuments = async () => {
     throw new Error("User not found");
   }
 
-  // VPAA can see all documents
-  const isVpaa = currentUser.role === "VPAA";
+  // Get user's workflow stage
+  const userStage = determineStageFromRole(currentUser.role);
 
-  // VPADA and President can ONLY see documents forwarded to them (not all documents)
-  const isVpadaOrPresident = ["VPADA", "PRESIDENT"].includes(currentUser.role);
+  // VPAA, VPADA, and President can ONLY see documents forwarded to them or at their stage
+  const isPrivilegedRole = ["VPAA", "VPADA", "PRESIDENT"].includes(currentUser.role);
 
   // Dean and HR can see their own documents OR documents forwarded to them
   const canSeeForwarded = ["DEAN", "HR"].includes(currentUser.role);
 
   // Build where clause based on user role
-  const where: Prisma.DocumentWhereInput = isVpaa
+  const where: Prisma.DocumentWhereInput = isPrivilegedRole
     ? {
-        // For VPAA, show all documents (all statuses)
-        // No filtering needed - show everything
-      }
-    : isVpadaOrPresident
-    ? {
-        // For VPADA and President: ONLY documents forwarded to them (not all documents)
-        assignatories: {
-          some: {
-            userId: currentUser.id,
+        // For VPAA, VPADA, and President: documents forwarded to them OR at their stage
+        OR: [
+          {
+            assignatories: {
+              some: {
+                userId: currentUser.id,
+              },
+            },
           },
-        },
+          {
+            history: {
+              some: {
+                stage: userStage,
+                action: {
+                  in: ["FORWARDED", "APPROVED", "REJECTED"],
+                },
+              },
+            },
+          },
+        ],
       }
     : canSeeForwarded
     ? {
@@ -303,6 +312,7 @@ export const getDocumentById = async (id: string) => {
     submittedBy: {
       id: doc.submittedBy.id,
       name: `${doc.submittedBy.firstName} ${doc.submittedBy.lastName}`,
+      designation: doc.submittedBy.designation?.name || "Unknown",
     },
     assignatories: doc.assignatories.map((assignatory) => ({
       id: assignatory.userId,
@@ -1222,31 +1232,45 @@ export const getApprovedDocumentsForRepository = async () => {
       return true;
     }
 
-    // For VPADA and VPAA: ONLY show documents that were forwarded to them
-    // They should NOT see documents based on category/office or workflow involvement
-    if (currentUser.role === "VPADA" || currentUser.role === "VPAA") {
-      // These roles can ONLY see documents they own or were forwarded to them
-      // (already checked above, so return false here)
-      return false;
-    }
-
-    // For President: Special repository visibility rule
-    // President can see all approved documents under President's office, even if not forwarded
-    if (currentUser.role === "PRESIDENT") {
-      // Check if document is under Office of the President
+    // For VPAA, VPADA, and President: Only show documents from their own office
+    if (currentUser.role === "VPAA" || currentUser.role === "VPADA" || currentUser.role === "PRESIDENT") {
+      // Get document's designations (offices/institutes)
       const documentDesignations = doc.fileCategory.designations;
       const documentDesignationNames = documentDesignations.map((d) => d.name);
 
-      const isPresidentOffice = documentDesignationNames.some((name) =>
-        name.toLowerCase().includes("president")
-      );
+      // Get user's designation
+      const userDesignation = currentUser.designation?.name || "";
 
-      // If document belongs to President's office, President can see it
-      if (isPresidentOffice) {
+      // Check if document belongs to user's office
+      const belongsToUserOffice = documentDesignationNames.some((name) => {
+        const lowerName = name.toLowerCase();
+        const lowerUserDesignation = userDesignation.toLowerCase();
+
+        // For President: check if document is under President's office
+        if (currentUser.role === "PRESIDENT") {
+          return lowerName.includes("president");
+        }
+
+        // For VPAA: check if document is under VPAA/Academic Affairs office
+        if (currentUser.role === "VPAA") {
+          return lowerName.includes("academic affairs") || lowerName.includes("vpaa");
+        }
+
+        // For VPADA: check if document is under VPADA office
+        if (currentUser.role === "VPADA") {
+          return lowerName.includes("vpada") || lowerName.includes("administrative affairs");
+        }
+
+        // Also check if designation names match
+        return lowerName === lowerUserDesignation || lowerName.includes(lowerUserDesignation);
+      });
+
+      // If document belongs to user's office, they can see it
+      if (belongsToUserOffice) {
         return true;
       }
 
-      // Otherwise, President can only see documents they own or were forwarded to them
+      // Otherwise, they can only see documents they own or were forwarded to them
       // (already checked above, so return false here)
       return false;
     }

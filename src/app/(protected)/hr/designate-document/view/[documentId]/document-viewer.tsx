@@ -734,8 +734,12 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
       event.preventDefault();
 
       const containerRect = wrapperRef.current.getBoundingClientRect();
-      const newX = event.clientX - containerRect.left - offsetX;
-      const newY = event.clientY - containerRect.top - offsetY;
+      // Account for scroll position to ensure accurate placement
+      const scrollX = wrapperRef.current.scrollLeft || 0;
+      const scrollY = wrapperRef.current.scrollTop || 0;
+
+      const newX = event.clientX - containerRect.left - offsetX + scrollX;
+      const newY = event.clientY - containerRect.top - offsetY + scrollY;
 
       const maxX = Math.max(0, containerRect.width - width);
       const maxY = Math.max(0, containerRect.height - height);
@@ -1212,6 +1216,14 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
               <p className="font-medium">{document.submittedBy.name}</p>
             </div>
           </div>
+          {(currentUser.role === "VPAA" || currentUser.role === "VPADA" || currentUser.role === "PRESIDENT") && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1 text-sm">
+                <p className="text-muted-foreground">Office/Institute</p>
+                <p className="font-medium">{document.submittedBy.designation || "Unknown"}</p>
+              </div>
+            </div>
+          )}
 
           {document.remarks && (
             <>
@@ -1385,6 +1397,16 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
           <div
             ref={wrapperRef}
             className="border rounded-lg overflow-hidden bg-white relative"
+            style={{
+              touchAction: "pan-x pan-y",
+              userSelect: "none",
+            }}
+            onWheel={(e) => {
+              // Prevent zoom on wheel with ctrl/cmd
+              if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+              }
+            }}
           >
             {isPdfAttachment ? (
               <>

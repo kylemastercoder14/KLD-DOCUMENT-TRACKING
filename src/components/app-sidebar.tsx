@@ -27,6 +27,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
 const menuItems = {
   SYSTEM_ADMIN: [
@@ -237,6 +238,19 @@ export function AppSidebar({ role }: { role?: string }) {
   const userMenuItems =
     menuItems[userRole as keyof typeof menuItems] || menuItems.INSTRUCTOR;
 
+  // Role display name mapping
+  const roleDisplayNames: Record<string, string> = {
+    SYSTEM_ADMIN: "System Admin",
+    PRESIDENT: "President",
+    VPAA: "VPAA",
+    VPADA: "VPADA",
+    DEAN: "Dean",
+    HR: "HR",
+    INSTRUCTOR: "Instructor",
+  };
+
+  const displayRole = roleDisplayNames[userRole] || userRole;
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -249,10 +263,15 @@ export function AppSidebar({ role }: { role?: string }) {
               className="size-full"
             />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="font-semibold text-sm">KLD Document Monitoring</h2>
             <p className="text-xs text-muted-foreground">Tracking System</p>
           </div>
+        </div>
+        <div className="mt-3 pt-3 border-t">
+          <Badge variant="secondary" className="w-full justify-center text-xs">
+            {displayRole}
+          </Badge>
         </div>
       </SidebarHeader>
 
