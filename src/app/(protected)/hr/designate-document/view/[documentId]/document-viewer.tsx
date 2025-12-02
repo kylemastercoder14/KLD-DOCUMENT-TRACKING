@@ -1536,10 +1536,6 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                 e.preventDefault();
               }
             }}
-            onGestureStart={(e) => {
-              // Prevent gesture zoom
-              e.preventDefault();
-            }}
           >
             {isPdfAttachment ? (
               <>
