@@ -1466,41 +1466,61 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                   </div>
                 </div>
                 {activeSignature && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Signature Size</Label>
-                      <Input
-                        type="range"
-                        min={0.5}
-                        max={2}
-                        step={0.1}
-                        value={activeSignature.scale}
-                        onChange={(e) => {
-                          const nextScale = Number(e.target.value);
-                          setSignatures((prev) =>
-                            prev.map((signature) =>
-                              signature.id === activeSignature.id
-                                ? { ...signature, scale: nextScale }
-                                : signature
-                            )
-                          );
-                        }}
-                      />
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Signature Size</Label>
+                        <Input
+                          type="range"
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          value={activeSignature.scale}
+                          onChange={(e) => {
+                            const nextScale = Number(e.target.value);
+                            setSignatures((prev) =>
+                              prev.map((signature) =>
+                                signature.id === activeSignature.id
+                                  ? { ...signature, scale: nextScale }
+                                  : signature
+                              )
+                            );
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Signature Opacity</Label>
+                        <Input
+                          type="range"
+                          min={0.3}
+                          max={1}
+                          step={0.1}
+                          value={activeSignature.opacity}
+                          onChange={(e) => {
+                            const nextOpacity = Number(e.target.value);
+                            setSignatures((prev) =>
+                              prev.map((signature) =>
+                                signature.id === activeSignature.id
+                                  ? { ...signature, opacity: nextOpacity }
+                                  : signature
+                              )
+                            );
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Signature Opacity</Label>
+                      <Label htmlFor="printed-name">Printed Name (Optional)</Label>
                       <Input
-                        type="range"
-                        min={0.3}
-                        max={1}
-                        step={0.1}
-                        value={activeSignature.opacity}
+                        id="printed-name"
+                        type="text"
+                        placeholder="Enter your printed name"
+                        value={activeSignature.printedName || ""}
                         onChange={(e) => {
-                          const nextOpacity = Number(e.target.value);
                           setSignatures((prev) =>
                             prev.map((signature) =>
                               signature.id === activeSignature.id
-                                ? { ...signature, opacity: nextOpacity }
+                                ? { ...signature, printedName: e.target.value }
                                 : signature
                             )
                           );
