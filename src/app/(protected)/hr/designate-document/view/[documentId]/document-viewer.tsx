@@ -480,6 +480,7 @@ type SignatureLayer = {
   src: string;
   scale: number;
   opacity: number;
+  printedName?: string;
   position: {
     x: number;
     y: number;
@@ -529,7 +530,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
-  const addSignature = (src: string, label?: string) => {
+  const addSignature = (src: string, label?: string, printedName?: string) => {
     setSignatures((prev) => {
       const newSignature: SignatureLayer = {
         id: generateSignatureId(),
@@ -537,6 +538,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
         src,
         scale: 1,
         opacity: 1,
+        printedName: printedName || "",
         position: { x: 40, y: 40 },
       };
       setActiveSignatureId(newSignature.id);
@@ -665,7 +667,11 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      addSignature(reader.result as string, file.name);
+      // Get current user's full name for printed name
+      const userFullName = currentUser
+        ? `${currentUser.firstName} ${currentUser.lastName}`.trim()
+        : "";
+      addSignature(reader.result as string, file.name, userFullName);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -681,19 +687,24 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
       toast.error("No stored signature found. Please upload one.");
       return;
     }
+    // Get current user's full name for printed name
+    const userFullName = currentUser
+      ? `${currentUser.firstName} ${currentUser.lastName}`.trim()
+      : "";
     setIsProcessingStoredSignature(true);
     try {
       const normalized =
         stored.startsWith("data:image") ? stored : `data:image/png;base64,${stored}`;
       const transparentSignature = await makeWhiteTransparent(normalized);
-      addSignature(transparentSignature, "Stored Signature");
+      addSignature(transparentSignature, "Stored Signature", userFullName);
       toast.success("Stored signature added with transparent background.");
     } catch (error) {
       console.error(error);
       toast.error("Failed to process stored signature. Using original instead.");
       addSignature(
         stored.startsWith("data:image") ? stored : `data:image/png;base64,${stored}`,
-        "Stored Signature"
+        "Stored Signature",
+        userFullName
       );
     } finally {
       setIsProcessingStoredSignature(false);
