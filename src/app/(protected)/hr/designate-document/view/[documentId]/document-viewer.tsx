@@ -204,12 +204,25 @@ const measureSignatureRects = (
   elements.forEach((element) => {
     const signatureId = element.dataset.signatureId;
     if (!signatureId) return;
-    const rect = element.getBoundingClientRect();
+
+    // Get the image element within the signature container
+    const imgElement = element.querySelector<HTMLImageElement>("img");
+    if (!imgElement) return;
+
+    // Get the CSS transform scale from the container
+    const transformMatch = element.style.transform?.match(/scale\(([^)]+)\)/);
+    const cssScale = transformMatch ? parseFloat(transformMatch[1]) : 1;
+
+    // Measure the image element - getBoundingClientRect() already accounts for CSS transforms
+    const imgRect = imgElement.getBoundingClientRect();
+
+    // Calculate position relative to wrapper
+    // The rect already includes the CSS transform scale, so we use it directly
     map[signatureId] = {
-      x: rect.left - wrapperRect.left,
-      y: rect.top - wrapperRect.top,
-      width: rect.width,
-      height: rect.height,
+      x: imgRect.left - wrapperRect.left,
+      y: imgRect.top - wrapperRect.top,
+      width: imgRect.width,  // Already scaled by CSS transform
+      height: imgRect.height, // Already scaled by CSS transform
     };
   });
 
@@ -510,6 +523,45 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
   const [signatures, setSignatures] = useState<SignatureLayer[]>([]);
   const [pdfPages, setPdfPages] = useState<string[]>([]);
   const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
+
+  // Prevent auto-zoom on mount and when signatures are added
+  useEffect(() => {
+    // Prevent zoom via keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent Ctrl/Cmd + Plus/Minus/0 zoom
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '0' || e.key === '=')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Reset zoom when signatures change or when document is forwarded
+  useEffect(() => {
+    if (wrapperRef.current && typeof window !== 'undefined') {
+      // Reset any zoom that might have occurred
+      const resetZoom = () => {
+        if (wrapperRef.current) {
+          wrapperRef.current.style.transform = '';
+          wrapperRef.current.style.zoom = '1';
+        }
+        // Also reset document zoom
+        if (typeof window !== 'undefined' && window.document.body) {
+          window.document.body.style.zoom = '1';
+        }
+      };
+
+      // Small delay to ensure DOM is updated
+      const timeoutId = setTimeout(resetZoom, 50);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [signatures.length]);
   const [isProcessingStoredSignature, setIsProcessingStoredSignature] = useState(false);
   const [wasCopied, setWasCopied] = useState(false);
   const [attachment, setAttachment] = useState<{ url: string; name?: string | null }>({
@@ -544,6 +596,17 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
       setActiveSignatureId(newSignature.id);
       return [...prev, newSignature];
     });
+
+    // Reset zoom immediately after adding signature to prevent auto-zoom
+    setTimeout(() => {
+      if (wrapperRef.current) {
+        wrapperRef.current.style.zoom = '1';
+        wrapperRef.current.style.transform = '';
+      }
+      if (typeof window !== 'undefined' && window.document.body) {
+        window.document.body.style.zoom = '1';
+      }
+    }, 10);
   };
 
   useEffect(() => {
@@ -962,13 +1025,33 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
                   const imageElement = await loadImageElement(signature.src);
                   context.save();
                   context.globalAlpha = signature.opacity;
+
+                  // The rect already accounts for CSS transform scale (from getBoundingClientRect)
+                  // So we just need to apply HTML2CANVAS_SCALE
+                  const scaledWidth = rect.width * HTML2CANVAS_SCALE;
+                  const scaledHeight = rect.height * HTML2CANVAS_SCALE;
+
                   context.drawImage(
                     imageElement,
                     rect.x * HTML2CANVAS_SCALE,
                     rect.y * HTML2CANVAS_SCALE,
-                    rect.width * HTML2CANVAS_SCALE,
-                    rect.height * HTML2CANVAS_SCALE
+                    scaledWidth,
+                    scaledHeight
                   );
+
+                  // Draw printed name below signature if it exists
+                  if (signature.printedName) {
+                    context.save();
+                    context.fillStyle = "#000000";
+                    context.font = `${12 * HTML2CANVAS_SCALE}px Arial`;
+                    context.textAlign = "center";
+                    context.textBaseline = "top";
+                    const textX = (rect.x * HTML2CANVAS_SCALE) + (scaledWidth / 2);
+                    const textY = (rect.y * HTML2CANVAS_SCALE) + scaledHeight + (5 * HTML2CANVAS_SCALE);
+                    context.fillText(signature.printedName, textX, textY);
+                    context.restore();
+                  }
+
                   context.restore();
                 } catch (error) {
                   console.warn("Unable to flatten signature layer", error);
@@ -1096,6 +1179,16 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
           setSignatures([]);
           setActiveSignatureId(null);
 
+          // Prevent zoom before navigation
+          if (typeof window !== 'undefined') {
+            if (window.document.body) {
+              window.document.body.style.zoom = '1';
+            }
+            if (wrapperRef.current) {
+              wrapperRef.current.style.zoom = '1';
+              wrapperRef.current.style.transform = '';
+            }
+          }
           router.push("/hr/designate-document");
           router.refresh();
           return url;
@@ -1177,14 +1270,26 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
         touchAction: "none",
       }}
     >
-      <img
-        src={signature.src}
-        alt={signature.label}
-        width={200}
-        height={100}
-        className="object-contain"
-        draggable={false}
-      />
+      <div className="flex flex-col items-center">
+        <img
+          src={signature.src}
+          alt={signature.label}
+          width={200}
+          height={100}
+          className="object-contain"
+          draggable={false}
+        />
+        <p
+          className="text-xs font-semibold mt-1 min-h-[14px]"
+          style={{
+            color: signature.printedName ? "#000" : "transparent",
+            textAlign: "center",
+            width: "100%"
+          }}
+        >
+          {signature.printedName || "\u00A0"}
+        </p>
+      </div>
     </div>
   ));
 
@@ -1416,7 +1521,24 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
               // Prevent zoom on wheel with ctrl/cmd
               if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
+                e.stopPropagation();
               }
+            }}
+            onTouchStart={(e) => {
+              // Prevent pinch zoom on touch devices
+              if (e.touches.length > 1) {
+                e.preventDefault();
+              }
+            }}
+            onTouchMove={(e) => {
+              // Prevent pinch zoom on touch devices
+              if (e.touches.length > 1) {
+                e.preventDefault();
+              }
+            }}
+            onGestureStart={(e) => {
+              // Prevent gesture zoom
+              e.preventDefault();
             }}
           >
             {isPdfAttachment ? (
