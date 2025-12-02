@@ -532,6 +532,9 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
     height: number;
   }>({ id: null, offsetX: 0, offsetY: 0, width: 0, height: 0 });
   const isDraggingRef = useRef(false);
+  const [isLoadingDoc, setIsLoadingDoc] = useState(true);
+  const [docError, setDocError] = useState<string | null>(null);
+  const [signatures, setSignatures] = useState<SignatureLayer[]>([]);
 
   // Prevent auto-zoom on mount and when signatures are added
   useEffect(() => {
@@ -571,9 +574,6 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
       return () => clearTimeout(timeoutId);
     }
   }, [signatures.length]);
-  const [isLoadingDoc, setIsLoadingDoc] = useState(true);
-  const [docError, setDocError] = useState<string | null>(null);
-  const [signatures, setSignatures] = useState<SignatureLayer[]>([]);
   const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
   const [isProcessingStoredSignature, setIsProcessingStoredSignature] = useState(false);
   const [wasCopied, setWasCopied] = useState(false);
