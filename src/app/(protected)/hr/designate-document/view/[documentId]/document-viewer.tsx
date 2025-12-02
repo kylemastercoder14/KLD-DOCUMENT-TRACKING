@@ -1216,7 +1216,7 @@ export function DocumentViewer({ document, currentUser }: DocumentViewerProps) {
               <p className="font-medium">{document.submittedBy.name}</p>
             </div>
           </div>
-          {(currentUser.role === "VPAA" || currentUser.role === "VPADA" || currentUser.role === "PRESIDENT") && (
+          {currentUser && (currentUser.role === "VPAA" || currentUser.role === "VPADA" || currentUser.role === "PRESIDENT") && (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1 text-sm">
                 <p className="text-muted-foreground">Office/Institute</p>
